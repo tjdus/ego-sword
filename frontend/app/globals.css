@@ -1,0 +1,105 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+}
+
+/* ─── Ego Sword 다크 테마 (기본) ────────────────────────────────────────── */
+
+:root {
+  --radius: 0.75rem;
+  /* 항상 다크 모드 사용 */
+  --background: #0B0E14;
+  --foreground: oklch(0.95 0 0);
+  --card: oklch(0.14 0.005 250);
+  --card-foreground: oklch(0.95 0 0);
+  --popover: oklch(0.14 0.005 250);
+  --popover-foreground: oklch(0.95 0 0);
+  --primary: oklch(0.85 0 0);
+  --primary-foreground: oklch(0.12 0 0);
+  --secondary: oklch(0.22 0.005 250);
+  --secondary-foreground: oklch(0.85 0 0);
+  --muted: oklch(0.22 0.005 250);
+  --muted-foreground: oklch(0.6 0 0);
+  --accent: oklch(0.22 0.005 250);
+  --accent-foreground: oklch(0.85 0 0);
+  --destructive: oklch(0.65 0.22 25);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.5 0 0);
+}
+
+/* ─── 속성 색상 변수 ─────────────────────────────────────────────────────── */
+:root {
+  --element-fire:    #EF4444;
+  --element-water:   #3B82F6;
+  --element-ice:     #06B6D4;
+  --element-thunder: #EAB308;
+  --element-wind:    #22C55E;
+  --element-poison:  #A855F7;
+  --element-light:   #F59E0B;
+  --element-dark:    #6B7280;
+  --element-neutral: #94A3B8;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-[#0B0E14] text-foreground;
+    background-image: radial-gradient(ellipse at 20% 10%, rgba(59,130,246,0.04) 0%, transparent 50%),
+                      radial-gradient(ellipse at 80% 90%, rgba(168,85,247,0.03) 0%, transparent 50%);
+    min-height: 100vh;
+  }
+
+  /* 모바일 터치 타겟 최소 44px */
+  button, [role="button"] {
+    min-height: 44px;
+  }
+}
+
+/* ─── 카드 글로우 유틸리티 ───────────────────────────────────────────────── */
+.card-glow-fire    { box-shadow: 0 0 12px rgba(239,68,68,0.15); }
+.card-glow-water   { box-shadow: 0 0 12px rgba(59,130,246,0.15); }
+.card-glow-ice     { box-shadow: 0 0 12px rgba(6,182,212,0.15); }
+.card-glow-thunder { box-shadow: 0 0 12px rgba(234,179,8,0.15); }
+.card-glow-wind    { box-shadow: 0 0 12px rgba(34,197,94,0.15); }
+.card-glow-poison  { box-shadow: 0 0 12px rgba(168,85,247,0.15); }
+.card-glow-light   { box-shadow: 0 0 12px rgba(245,158,11,0.15); }
+.card-glow-dark    { box-shadow: 0 0 12px rgba(107,114,128,0.15); }
+.card-glow-neutral { box-shadow: 0 0 12px rgba(148,163,184,0.10); }
+
+/* ─── 룬 글로우 (특성 선택) ──────────────────────────────────────────────── */
+.rune-glow {
+  box-shadow: 0 0 20px rgba(168,85,247,0.4), 0 0 40px rgba(168,85,247,0.1);
+  border-color: rgba(168,85,247,0.6) !important;
+}
