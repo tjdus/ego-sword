@@ -1,0 +1,81 @@
+# macOS
+.DS_Store
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# TypeScript
+*.tsbuildinfo
+
+# Prisma (migrations와 seed는 커밋 필요)
+/backend/prisma/.env
+
+# Next.js
+/.next/
+/frontend/.next/
+
+# Build outputs
+/dist/
+/build/
+
+# Environment
+.env
+.env.*
+/frontend/.env.local
+/backend/.env.local
+
+# Logs
+logs/
+*.log
+
+# Coverage
+coverage/
+
+# Public assets (생성된 아이콘/이미지만 제외, favicon 등은 커밋)
+/frontend/public/icon-*.png
+/frontend/public/og-*.png
+
+# Postgres
+*.dump
+*.sql
+
+# Misc
+*.swp
+*.swo
+
+# Ignore local DB backups
+/backend/db_backups/
+
+# Ignore local cache
+.cache/
+
+# Ignore local test results
+/test-results/
+
+# Ignore local Python environments (if any)
+venv/
+__pycache__/
+
+# Ignore local files
+local/
+
+# Ignore frontend build artifacts
+/frontend/out/
+
+# Ignore backend build artifacts
+/backend/dist/
+
+# Ignore coverage reports
+/backend/coverage/
+/frontend/coverage/
+
+# Ignore shadcn UI generated files (if any)
+/frontend/components/ui/generated/

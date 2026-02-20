@@ -1,0 +1,239 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── 유저 & 영구 진행 ───────────────────────────────────────────────────────
+
+model User {
+  id              String                   @id @default(cuid())
+  guestToken      String?                  @unique
+  deviceId        String?
+  createdAt       DateTime                 @default(now())
+  runs            Run[]
+  permanentTraits PermanentTraitProgress[]
+}
+
+model PermanentTraitProgress {
+  id       String @id @default(cuid())
+  userId   String
+  traitId  String
+  category String // attribute | combat | explore | domination
+  stacks   Int    @default(1)
+  user     User   @relation(fields: [userId], references: [id])
+
+  @@unique([userId, traitId])
+}
+
+// ─── 런 & 방 ────────────────────────────────────────────────────────────────
+
+model Run {
+  id              String              @id @default(cuid())
+  userId          String
+  status          String              @default("active") // active | completed | failed
+  currentFloor    Int                 @default(1)
+  dungeonSeed     String
+  startedAt       DateTime            @default(now())
+  endedAt         DateTime?
+  killedBy        String?
+  bossReached     Boolean             @default(false)
+  floorDepth      Int                 @default(0)
+  user            User                @relation(fields: [userId], references: [id])
+  swordState      SwordState?
+  ownerState      OwnerState?
+  rooms           RunRoom[]
+  turnLogs        RunTurnLog[]
+  traitCandidates RunTraitCandidate[]
+  enemyStates     EnemyState[]
+}
+
+model RunRoom {
+  id         String      @id @default(cuid())
+  runId      String
+  floor      Int
+  position   Int
+  roomType   String // battle | elite | event | shop | rest | boss
+  status     String      @default("locked") // locked | available | completed
+  enemyId    String?
+  enemyState EnemyState?
+  run        Run         @relation(fields: [runId], references: [id])
+
+  @@index([runId, floor])
+}
+
+model RunTurnLog {
+  id           String   @id @default(cuid())
+  runId        String
+  roomId       String
+  turnNumber   Int
+  actorType    String // sword | owner | enemy
+  actionType   String // skill | attack | defend | status
+  skillId      String?
+  damageDealt  Int?
+  healAmount   Int?
+  stateChanges Json?
+  createdAt    DateTime @default(now())
+  run          Run      @relation(fields: [runId], references: [id])
+
+  @@index([runId, roomId])
+}
+
+// ─── 런 중 상태 ──────────────────────────────────────────────────────────────
+
+model SwordState {
+  id              String   @id @default(cuid())
+  runId           String   @unique
+  atk             Int      @default(10)
+  def             Int      @default(5)
+  spd             Int      @default(8)
+  sync            Int      @default(8)
+  syncMax         Int      @default(8)
+  stb             Int      @default(10)
+  dom             Int      @default(0)
+  element         String   @default("neutral")
+  activeSkillIds  String[]
+  passiveSkillIds String[]
+  absorbedItemIds String[]
+  tags            String[]
+  isOverdriven    Boolean  @default(false)
+  isMagicSword    Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+  run             Run      @relation(fields: [runId], references: [id])
+}
+
+model OwnerState {
+  id                 String   @id @default(cuid())
+  runId              String   @unique
+  ownerId            String
+  class              String // warrior|mage|paladin|rogue|hunter|berserker
+  rarity             String // common|rare|epic
+  hp                 Int
+  hpMax              Int
+  pow                Int
+  guard              Int
+  agi                Int
+  focus              Int
+  det                Int      @default(5)
+  greed              Int      @default(5)
+  bold               Int      @default(5)
+  caut               Int      @default(5)
+  mercy              Int      @default(5)
+  ownerTraitIds      String[]
+  name               String
+  oneLiner           String
+  speechStyleJson    Json
+  compatibilityScore Int      @default(50)
+  compatBreakdown    Json
+  updatedAt          DateTime @updatedAt
+  run                Run      @relation(fields: [runId], references: [id])
+}
+
+model EnemyState {
+  id String @id @default(uuid())
+
+  runId  String
+  roomId String @unique
+
+  templateId String
+  template   EnemyTemplate @relation(fields: [templateId], references: [id])
+  run        Run           @relation(fields: [runId], references: [id])
+  room       RunRoom       @relation(fields: [roomId], references: [id])
+
+  hp    Int
+  hpMax Int
+  atk   Int
+  def   Int
+  spd   Int
+
+  statusJson       Json
+  patternStateJson Json
+
+  turnCount Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── 런 종료 특성 후보 ────────────────────────────────────────────────────────
+
+model RunTraitCandidate {
+  id       String  @id @default(cuid())
+  runId    String
+  traitId  String
+  aiLabel  String?
+  selected Boolean @default(false)
+  run      Run     @relation(fields: [runId], references: [id])
+}
+
+// ─── 정적 템플릿 (Seed 데이터) ────────────────────────────────────────────────
+
+model SkillTemplate {
+  id            String   @id
+  type          String // attack|defense|control|resource|risk
+  category      String // single|aoe|chain|shield|debuff|sync|overdrive
+  cost          Int
+  element       String
+  tags          String[]
+  effectJson    Json
+  riskJson      Json?
+  aiName        String?
+  aiDesc        String?
+  aiVfxKeywords String[]
+  aiQuote       String?
+}
+
+model TraitTemplate {
+  id          String  @id
+  category    String // attribute|combat|explore|domination
+  element     String?
+  effectJson  Json
+  softcapAt   Int     @default(10)
+  spawnWeight Int     @default(10)
+  domOnly     Boolean @default(false)
+  aiName      String?
+  aiDesc      String?
+}
+
+model ItemTemplate {
+  id         String   @id
+  tags       String[]
+  effectJson Json
+  rarity     String // common|rare|epic
+  shopPrice  Int      @default(10)
+  aiName     String?
+  aiDesc     String?
+}
+
+model EnemyTemplate {
+  id            String       @id
+  name          String
+  category      String // normal|elite|boss
+  element       String
+  hp            Int
+  atk           Int
+  def           Int
+  spd           Int
+  patternJson   Json
+  statusEffects String[]
+  floorMin      Int          @default(1)
+  floorMax      Int          @default(3)
+  enemyStates   EnemyState[]
+}
+
+// ─── AI 텍스트 캐시 ───────────────────────────────────────────────────────────
+
+model AiTextCache {
+  id        String   @id @default(cuid())
+  cacheKey  String   @unique
+  cacheType String // owner|skill|trait|run_end
+  payload   Json
+  hitCount  Int      @default(0)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([cacheType, createdAt])
+}
