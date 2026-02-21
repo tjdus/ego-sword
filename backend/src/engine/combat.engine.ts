@@ -20,12 +20,12 @@ import {
   COMPAT_LOW_THRESHOLD,
   SYNC_RECOVERY_BASE,
   SYNC_RECOVERY_HIGH_COMPAT,
-  MAGIC_SWORD_DOM_THRESHOLD,
 } from '../shared/constants/game.constants';
 import { ElementEngine } from './element.engine';
 import { CompatibilityEngine } from './compatibility.engine';
 import { OverdriveEngine } from './overdrive.engine';
 import { MagicSwordEngine, MagicSwordAction, ForceActionType } from './magic-sword.engine';
+import { buildTagMap, computeSkillMutation } from './mutation';
 
 // ─── 전투 컨텍스트 ────────────────────────────────────────────────────────────
 
@@ -34,6 +34,7 @@ export interface BattleContext {
   sword: SwordStats & {
     element: Element;
     activeSkillIds: string[];
+    tags: string[];
     statusEffects: AppliedStatus[];
     isOverdriven: boolean;
     isMagicSword: boolean;
@@ -62,6 +63,8 @@ export interface BattleContext {
 
 export interface SkillInput {
   skillId: string;
+  aiName?: string;      // 스킬 표시 이름 (변이 계산용)
+  mutatedName?: string; // 변이 후 이름 (applySkillEffect에서 로그에 사용)
   effect: SkillEffect;
   risk?: SkillRisk;
   element: Element;
@@ -139,7 +142,27 @@ export class CombatEngine {
       logs.push({ actorType: 'sword', actionType: 'basic_attack', damageDealt: finalDmg });
     } else {
       sword.sync -= skillInput.cost;
-      this.applySkillEffect(skillInput, sword, owner, enemy, ctx, logs, random);
+
+      // ── 태그 변이 계산 ──────────────────────────────────────────────────
+      const tagMap = buildTagMap(sword.tags ?? []);
+      const mutation = computeSkillMutation(
+        skillInput.element,
+        skillInput.effect,
+        skillInput.aiName ?? skillInput.skillId,
+        tagMap,
+      );
+      const mutatedInput: SkillInput = {
+        ...skillInput,
+        effect: mutation.augmentedEffect,
+        mutatedName: mutation.mutatedName,
+      };
+
+      this.applySkillEffect(mutatedInput, sword, owner, enemy, ctx, logs, random);
+
+      // 변이 STB 소모 (저주 빌드 등)
+      if (mutation.stbCostPerUse) {
+        sword.stb = Math.max(1, sword.stb - mutation.stbCostPerUse);
+      }
     }
 
     // 리스크 적용 (STB/DOM 변화)
@@ -244,6 +267,7 @@ export class CombatEngine {
         actorType: 'sword',
         actionType: 'skill',
         skillId: skill.skillId,
+        mutatedName: skill.mutatedName,
         damageDealt: reduced,
       });
     }

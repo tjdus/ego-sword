@@ -175,6 +175,7 @@ export interface TurnLogEntry {
   actorType: 'sword' | 'owner' | 'enemy';
   actionType: string;
   skillId?: string;
+  mutatedName?: string;  // 태그 변이 후 스킬 이름 (있을 때만)
   damageDealt?: number;
   healAmount?: number;
   statusApplied?: AppliedStatus;

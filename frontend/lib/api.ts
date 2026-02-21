@@ -171,6 +171,13 @@ export interface RoomEnterResult {
   eventData?: { id: string; choices: number };
 }
 
+/** 백엔드 AppliedStatus와 동일한 구조 */
+export interface AppliedStatus {
+  type: string;
+  duration: number;
+  stacks?: number;
+}
+
 export interface EnemyState {
   id: string;
   name: string;
@@ -181,7 +188,7 @@ export interface EnemyState {
   def: number;
   spd: number;
   patterns: unknown[];
-  statusEffects: unknown[];
+  statusEffects: AppliedStatus[];
 }
 
 export interface SwordState {
@@ -198,7 +205,10 @@ export interface SwordState {
   isOverdriven: boolean;
   isMagicSword: boolean;
   activeSkillIds: string[];
-  statusEffects?: unknown[];
+  passiveSkillIds?: string[];
+  absorbedItemIds?: string[];
+  tags?: string[];
+  statusEffects?: AppliedStatus[];
 }
 
 export interface OwnerState {
@@ -207,6 +217,10 @@ export interface OwnerState {
   name: string;
   hp: number;
   hpMax: number;
+  pow: number;
+  guard: number;
+  agi: number;
+  focus: number;
   compatibilityScore: number;
   statusEffects?: unknown[];
 }
@@ -229,6 +243,7 @@ export interface TurnLog {
   actorType: string;
   actionType: string;
   skillId?: string;
+  mutatedName?: string;  // 태그 변이 후 스킬 이름
   damageDealt?: number;
   healAmount?: number;
   text?: string;

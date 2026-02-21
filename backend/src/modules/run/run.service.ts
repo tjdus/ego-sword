@@ -447,6 +447,7 @@ export class RunService {
         ...swordStats,
         element: swordDb.element as Element,
         activeSkillIds: swordDb.activeSkillIds,
+        tags: swordDb.tags,
         statusEffects: [],
         isOverdriven: swordDb.isOverdriven,
         isMagicSword: swordDb.isMagicSword,
@@ -471,6 +472,7 @@ export class RunService {
 
     const skillInput: SkillInput = {
       skillId: skill.id,
+      aiName: skill.aiName ?? skill.id,
       effect: skill.effectJson as import('../../shared/types/game.types').SkillEffect,
       risk: skill.riskJson as import('../../shared/types/game.types').SkillRisk | undefined,
       element: skill.element as Element,
@@ -545,12 +547,32 @@ export class RunService {
       await this.unlockNextRoom(runId, room);
     }
 
+    // 엔진 스냅샷(전투 변동값)과 DB 비변동 필드를 머지해서 프론트에 전달
     return {
       result: {
         logs: result.logs,
       },
-      swordState: result.swordStateAfter,
-      ownerState: result.ownerStateAfter,
+      swordState: {
+        ...result.swordStateAfter,
+        // 전투 중 변하지 않는 DB 필드 (엔진 스냅샷에 없음)
+        element:         swordDb.element,
+        gold:            swordDb.gold,
+        activeSkillIds:  swordDb.activeSkillIds,
+        passiveSkillIds: swordDb.passiveSkillIds,
+        absorbedItemIds: swordDb.absorbedItemIds,
+        tags:            swordDb.tags,
+      },
+      ownerState: {
+        ...result.ownerStateAfter,
+        // DB 필드 (스냅샷에 없음)
+        name:               ownerDb.name,
+        class:              ownerDb.class,
+        pow:                ownerDb.pow,
+        guard:              ownerDb.guard,
+        agi:                ownerDb.agi,
+        focus:              ownerDb.focus,
+        compatibilityScore: ownerDb.compatibilityScore,
+      },
       enemyState: result.enemyStateAfter,
       battleEnd: result.battleEnd,
     };
@@ -754,7 +776,8 @@ export class RunService {
     updateData.absorbedItemIds = [...sword.absorbedItemIds, itemId];
     updateData.gold = sword.gold - item.shopPrice;
     if (item.tags.length > 0) {
-      updateData.tags = [...new Set([...sword.tags, ...item.tags])];
+      // Set 없이 중복 허용 → 같은 태그 여러 번 흡수 시 변이 스택 누적
+      updateData.tags = [...sword.tags, ...item.tags];
     }
 
     const updated = await this.prisma.swordState.update({
