@@ -5,21 +5,27 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { api } from '@/lib/api';
 import { useRunStore } from '@/store/runStore';
 
 export default function RestPage() {
   const router = useRouter();
-  const { ownerState } = useRunStore();
+  const { ownerState, setOwnerState, runId, currentRoom } = useRunStore();
   const [rested, setRested] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const hp = ownerState?.hp ?? 80;
   const hpMax = ownerState?.hpMax ?? 100;
   const healAmount = Math.floor(hpMax * 0.3);
   const newHp = Math.min(hpMax, hp + healAmount);
 
-  function handleRest() {
-    // 실제 구현: API 호출 없이 프론트에서만 상태 반영 (또는 별도 API 추가)
+  async function handleRest() {
+    if (!runId || !currentRoom) return;
+    setLoading(true);
+    const result = await api.run.completeRoom(runId, currentRoom.id);
+    if (result.ownerState) setOwnerState(result.ownerState as Parameters<typeof setOwnerState>[0]);
     setRested(true);
+    setLoading(false);
   }
 
   return (
@@ -46,7 +52,7 @@ export default function RestPage() {
           {!rested ? (
             <div className="flex flex-col gap-2 mt-2">
               <p className="text-xs text-gray-400">휴식 시 HP +{healAmount} 회복</p>
-              <Button onClick={handleRest} className="w-full">
+              <Button onClick={handleRest} disabled={loading} className="w-full">
                 휴식한다
               </Button>
             </div>

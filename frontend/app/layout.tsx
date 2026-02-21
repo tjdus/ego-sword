@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist } from 'next/font/google';
+import { Toaster } from 'sonner';
 import './globals.css';
 import { Providers } from './providers';
 
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="mx-auto max-w-140 min-h-screen relative">
             {children}
           </div>
+          <Toaster theme="dark" position="bottom-center" richColors />
         </Providers>
       </body>
     </html>

@@ -99,6 +99,7 @@ model SwordState {
   passiveSkillIds String[]
   absorbedItemIds String[]
   tags            String[]
+  gold            Int      @default(30)
   isOverdriven    Boolean  @default(false)
   isMagicSword    Boolean  @default(false)
   updatedAt       DateTime @updatedAt

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -168,6 +168,12 @@ const FALLBACK_ENEMY: EnemyState = {
   statusEffects: [],
 };
 
+const ACTOR_STYLE = {
+  sword: { label: "에고소드", color: "text-cyan-400", bg: "bg-cyan-500/15" },
+  owner: { label: "주인", color: "text-emerald-400", bg: "bg-emerald-500/15" },
+  enemy: { label: "적", color: "text-red-400", bg: "bg-red-500/15" },
+} as const;
+
 export default function BattlePage() {
   const router = useRouter();
   const {
@@ -180,6 +186,7 @@ export default function BattlePage() {
     setOwnerState,
     setEnemyState,
     addBattleLog,
+    clearBattleLog,
     battleLog,
   } = useRunStore();
 
@@ -193,12 +200,31 @@ export default function BattlePage() {
     { id: number; value: number; type: "dmg" | "heal" }[]
   >([]);
   const [activeSkills, setActiveSkills] = useState<SkillInfo[]>([]);
+  const turnCounterRef = useRef(1);
+  const logEndRef = useRef<HTMLDivElement>(null);
+
+  const turnGroups = useMemo(() => {
+    const groups = new Map<number, typeof battleLog>();
+    battleLog.forEach((log) => {
+      const turn = log.turnNumber ?? 0;
+      if (!groups.has(turn)) groups.set(turn, []);
+      groups.get(turn)!.push(log);
+    });
+    return [...groups.entries()].sort(([a], [b]) => a - b);
+  }, [battleLog]);
+
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [battleLog]);
+
   useEffect(() => {
     if (!runId || !currentRoom) {
       router.replace("/run/map");
       return;
     }
 
+    clearBattleLog();
+    turnCounterRef.current = 1;
     api.run.getAllSkills(runId).then((skills) => {
       setActiveSkills(skills);
     });
@@ -216,7 +242,12 @@ export default function BattlePage() {
       setSwordState(result.swordState);
       setOwnerState(result.ownerState);
       setEnemyState(result.enemyState);
-      addBattleLog(result.result.logs);
+      const tagged = result.result.logs.map((l) => ({
+        ...l,
+        turnNumber: turnCounterRef.current,
+      }));
+      addBattleLog(tagged);
+      turnCounterRef.current++;
       setMagicAction(null);
 
       console.log("Turn result:", result); // 디버깅용 로그
@@ -331,11 +362,12 @@ export default function BattlePage() {
               {damageNumbers.map((d) => (
                 <motion.span
                   key={d.id}
-                  initial={{ opacity: 1, y: 0 }}
-                  animate={{ opacity: 0, y: -30 }}
+                  initial={{ opacity: 1, y: 0, scale: 1 }}
+                  animate={{ opacity: 0, y: -52, scale: 1.4 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.8 }}
-                  className="absolute right-2 -top-6 text-red-400 font-bold text-sm pointer-events-none"
+                  transition={{ duration: 0.9, ease: "easeOut" }}
+                  className="absolute right-3 -top-8 text-red-300 font-black text-2xl pointer-events-none drop-shadow-lg"
+                  style={{ textShadow: "0 0 12px rgba(239,68,68,0.8)" }}
                 >
                   -{d.value}
                 </motion.span>
@@ -420,25 +452,103 @@ export default function BattlePage() {
       </div>
 
       {/* 전투 로그 */}
-      <div className="flex-1 overflow-y-auto max-h-32">
-        <div className="flex flex-col gap-1">
-          {battleLog
-            .slice(-5)
-            .reverse()
-            .map((log, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: 5 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="text-xs text-muted-foreground px-2 py-1 rounded-lg bg-white/3"
+      <div
+        className="flex-1 overflow-y-auto max-h-44 space-y-2"
+        style={{ scrollbarWidth: "none" }}
+      >
+        {turnGroups.length === 0 && (
+          <p className="text-[10px] text-white/20 text-center py-3">
+            전투를 시작하라...
+          </p>
+        )}
+        {turnGroups.map(([turnNum, logs], groupIndex) => {
+          const isLastGroup = groupIndex === turnGroups.length - 1;
+          return (
+            <motion.div
+              key={turnNum}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              {/* Turn 헤더 */}
+              <div className="flex items-center gap-2 mb-1 px-1">
+                <div className="flex-1 h-px bg-white/10" />
+                <span className="text-[10px] text-white/25 font-medium">
+                  Turn {turnNum}
+                </span>
+                <div className="flex-1 h-px bg-white/10" />
+              </div>
+              {/* Turn 로그 카드 */}
+              <Card
+                className={`rounded-xl border-white/8 overflow-hidden ${isLastGroup ? "bg-white/6" : "bg-white/3"}`}
               >
-                {log.text ??
-                  (log.damageDealt
-                    ? `${log.actorType === "sword" ? "⚔️" : log.actorType === "owner" ? "🧑" : "👹"} ${log.damageDealt} 피해`
-                    : log.actionType)}
-              </motion.div>
-            ))}
-        </div>
+                <div className="px-3 py-2 space-y-1">
+                  {logs.map((log, logIndex) => {
+                    const isLatest =
+                      isLastGroup && logIndex === logs.length - 1;
+                    const actorKey =
+                      log.actorType in ACTOR_STYLE
+                        ? (log.actorType as keyof typeof ACTOR_STYLE)
+                        : "enemy";
+                    const style = ACTOR_STYLE[actorKey];
+                    const hasDamage = (log.damageDealt ?? 0) > 0;
+                    const hasHeal = (log.healAmount ?? 0) > 0;
+                    return (
+                      <motion.div
+                        key={logIndex}
+                        initial={{ opacity: 0, x: -4 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: logIndex * 0.04 }}
+                        className={`flex items-start gap-2 text-xs py-1 px-1.5 rounded-md ${isLatest ? "bg-white/8" : ""}`}
+                      >
+                        <span
+                          className={`shrink-0 font-bold text-[9px] px-1.5 py-0.5 rounded mt-0.5 ${style.color} ${style.bg}`}
+                        >
+                          {style.label}
+                        </span>
+                        <div className="flex-1 leading-relaxed text-white/70">
+                          {log.text ? (
+                            <span>{log.text}</span>
+                          ) : hasDamage ? (
+                            <motion.span
+                              initial={{ scale: 0.6, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              transition={{
+                                type: "spring",
+                                stiffness: 320,
+                                damping: 18,
+                              }}
+                              className={`font-bold text-sm ${actorKey === "enemy" ? "text-red-400" : "text-cyan-300"}`}
+                            >
+                              {log.damageDealt} 피해
+                            </motion.span>
+                          ) : hasHeal ? (
+                            <motion.span
+                              initial={{ scale: 0.6, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              transition={{
+                                type: "spring",
+                                stiffness: 320,
+                                damping: 18,
+                              }}
+                              className="font-bold text-sm text-emerald-400"
+                            >
+                              +{log.healAmount} 회복
+                            </motion.span>
+                          ) : (
+                            <span className="text-white/40">
+                              {log.actionType}
+                            </span>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </Card>
+            </motion.div>
+          );
+        })}
+        <div ref={logEndRef} />
       </div>
 
       {/* 스킬 그리드 */}

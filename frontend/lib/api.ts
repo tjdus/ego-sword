@@ -94,11 +94,20 @@ export const api = {
         { method: "POST", body: JSON.stringify({ traitId }) },
       ),
 
-    chooseEvent: (runId: string, eventId: string, choiceIndex: number) =>
+    chooseEvent: (runId: string, eventId: string, choiceIndex: number, roomId: string) =>
       request<{ outcome: { text: string; tag?: string; rewards?: unknown[] } }>(
         `/api/run/${runId}/event/${eventId}/choose`,
-        { method: "POST", body: JSON.stringify({ choiceIndex }) },
+        { method: "POST", body: JSON.stringify({ choiceIndex, roomId }) },
       ),
+
+    completeRoom: (runId: string, roomId: string) =>
+      request<{ status: string; ownerState: OwnerState | null }>(
+        `/api/run/${runId}/room/${roomId}/complete`,
+        { method: 'POST' },
+      ),
+
+    getShopItems: (runId: string) =>
+      request<{ items: ShopItem[]; gold: number }>(`/api/run/${runId}/shop/items`),
 
     getAllSkills: (runId: string) =>
       request<SkillInfo[]>(`/api/run/${runId}/skills`),
@@ -184,6 +193,7 @@ export interface SwordState {
   syncMax: number;
   stb: number;
   dom: number;
+  gold: number;
   element: string;
   isOverdriven: boolean;
   isMagicSword: boolean;
@@ -222,6 +232,7 @@ export interface TurnLog {
   damageDealt?: number;
   healAmount?: number;
   text?: string;
+  turnNumber?: number;
 }
 
 export interface RunEndResult {
@@ -270,4 +281,14 @@ export interface SkillInfo {
   riskJson: JSONValue | null;
   aiVfxKeywords: string[];
   aiQuote: string | null;
+}
+
+export interface ShopItem {
+  id: string;
+  tags: string[];
+  effectJson: JSONValue;
+  rarity: string;
+  shopPrice: number;
+  aiName: string | null;
+  aiDesc: string | null;
 }

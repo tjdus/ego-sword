@@ -140,7 +140,8 @@ async function main() {
       { id: 'ELITE_PHANTOM_THIEF', name: '환영 도적', category: 'elite', element: 'dark', hp: 90, atk: 18, def: 5, spd: 18, patternJson: [{ condition: 'always', action: 'attack', priority: 1 }, { condition: 'hp_below_50', action: 'debuff', priority: 2, statusEffect: 'blind' }], statusEffects: [], floorMin: 2, floorMax: 3 },
       { id: 'ELITE_FROST_WITCH', name: '서리 마녀', category: 'elite', element: 'ice', hp: 100, atk: 16, def: 6, spd: 12, patternJson: [{ condition: 'always', action: 'debuff', priority: 1, statusEffect: 'slow' }, { condition: 'hp_below_50', action: 'attack', priority: 2, multiplier: 1.5 }], statusEffects: ['slow'], floorMin: 2, floorMax: 3 },
 
-      // 보스 (2종)
+      // 보스 (3종)
+      { id: 'BOSS_IRON_GUARDIAN', name: '철의 수호자', category: 'boss', element: 'neutral', hp: 140, atk: 14, def: 12, spd: 6, patternJson: [{ condition: 'always', action: 'attack', priority: 1 }, { condition: 'hp_below_50', action: 'heavy_attack', priority: 2, multiplier: 1.6 }, { condition: 'hp_below_25', action: 'defend', priority: 3 }], statusEffects: [], floorMin: 1, floorMax: 1 },
       { id: 'BOSS_WANDERING_SOUL', name: '방랑하는 영혼', category: 'boss', element: 'dark', hp: 200, atk: 18, def: 10, spd: 10, patternJson: [{ condition: 'always', action: 'attack', priority: 1 }, { condition: 'hp_below_50', action: 'heavy_attack', priority: 2, multiplier: 1.8 }, { condition: 'hp_below_25', action: 'debuff', priority: 3, statusEffect: 'stun' }], statusEffects: [], floorMin: 2, floorMax: 2 },
       { id: 'BOSS_CHAIN_BREAKER', name: '체인브레이커', category: 'boss', element: 'neutral', hp: 300, atk: 22, def: 15, spd: 8, patternJson: [{ condition: 'always', action: 'attack', priority: 1, multiplier: 1.1 }, { condition: 'hp_below_50', action: 'heavy_attack', priority: 2, multiplier: 2.0 }, { condition: 'hp_below_25', action: 'debuff', priority: 3, statusEffect: 'seal' }], statusEffects: [], floorMin: 3, floorMax: 3 },
     ],
@@ -150,7 +151,7 @@ async function main() {
   console.log(`  - SkillTemplates: 20`);
   console.log(`  - TraitTemplates: 21`);
   console.log(`  - ItemTemplates: 15`);
-  console.log(`  - EnemyTemplates: 17`);
+  console.log(`  - EnemyTemplates: 18`);
 }
 
 main()

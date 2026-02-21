@@ -50,7 +50,7 @@ export default function EventPage() {
     if (!runId || chosen) return;
     setChoosing(true);
     try {
-      const res = await api.run.chooseEvent(runId, eventData.eventId, choiceIndex);
+      const res = await api.run.chooseEvent(runId, eventData.eventId, choiceIndex, currentRoom?.id ?? '');
       setOutcome({ text: res.outcome.text, tag: res.outcome.tag });
       setChosen(true);
     } catch {

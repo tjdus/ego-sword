@@ -34,8 +34,10 @@ interface RunStore {
   setOwnerState: (state: OwnerState) => void;
   setEnemyState: (state: EnemyState | null) => void;
   setCurrentRoom: (room: RoomData) => void;
+  setCurrentFloor: (floor: number) => void;
   setFloorMap: (rooms: RoomData[]) => void;
   addBattleLog: (logs: TurnLog[]) => void;
+  clearBattleLog: () => void;
   resetRun: () => void;
 }
 
@@ -60,6 +62,7 @@ export const useRunStore = create<RunStore>()(
         }
       },
       setRunId: (runId) => set({ runId }),
+      setCurrentFloor: (currentFloor) => set({ currentFloor }),
       setSwordState: (swordState) => set({ swordState }),
       setOwnerState: (ownerState) => set({ ownerState }),
       setEnemyState: (enemyState) => set({ enemyState }),
@@ -67,6 +70,7 @@ export const useRunStore = create<RunStore>()(
       setFloorMap: (floorMap) => set({ floorMap }),
       addBattleLog: (logs) =>
         set((s) => ({ battleLog: [...s.battleLog, ...logs].slice(-20) })),
+      clearBattleLog: () => set({ battleLog: [] }),
       resetRun: () =>
         set({
           runId: null,

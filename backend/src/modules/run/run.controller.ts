@@ -67,6 +67,16 @@ export class RunController {
     return this.runService.enterRoom(runId, req.user.userId, roomId);
   }
 
+  // POST /api/run/:runId/room/:roomId/complete
+  @Post(':runId/room/:roomId/complete')
+  completeRoom(
+    @Param('runId') runId: string,
+    @Param('roomId') roomId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.runService.completeRoom(runId, req.user.userId, roomId);
+  }
+
   // POST /api/run/:runId/room/:roomId/turn
   @Post(':runId/room/:roomId/turn')
   processTurn(
@@ -91,6 +101,23 @@ export class RunController {
     },
   ) {
     return this.runService.processTurn(runId, req.user.userId, roomId, body);
+  }
+
+  // POST /api/run/:runId/event/:eventId/choose
+  @Post(':runId/event/:eventId/choose')
+  chooseEvent(
+    @Param('runId') runId: string,
+    @Param('eventId') eventId: string,
+    @Req() req: AuthRequest,
+    @Body() body: { choiceIndex: number; roomId: string },
+  ) {
+    return this.runService.chooseEvent(runId, req.user.userId, eventId, body.choiceIndex, body.roomId);
+  }
+
+  // GET /api/run/:runId/shop/items
+  @Get(':runId/shop/items')
+  getShopItems(@Param('runId') runId: string, @Req() req: AuthRequest) {
+    return this.runService.getShopItems(runId, req.user.userId);
   }
 
   // POST /api/run/:runId/absorb

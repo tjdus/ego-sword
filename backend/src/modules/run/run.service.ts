@@ -253,6 +253,7 @@ export class RunService {
           passiveSkillIds: [],
           absorbedItemIds: [],
           tags: [],
+          gold: 30,
         },
       }),
       this.prisma.ownerState.create({
@@ -326,6 +327,8 @@ export class RunService {
     if (!room || room.runId !== runId) throw new NotFoundException('방을 찾을 수 없습니다.');
     if (room.status === 'locked') throw new BadRequestException('잠긴 방입니다.');
 
+    console.log(room);
+
     if (room.roomType === 'battle' || room.roomType === 'elite' || room.roomType === 'boss') {
       // roomType('battle') → enemyCategory('normal') 매핑
       const enemyCategory = room.roomType === 'battle' ? 'normal' : room.roomType; // elite|boss는 동일
@@ -333,34 +336,34 @@ export class RunService {
         ? await this.prisma.enemyTemplate.findUnique({ where: { id: room.enemyId } })
         : await this.getRandomEnemy(enemyCategory, run.currentFloor);
 
-if (!enemyTemplate) throw new NotFoundException('적 템플릿을 찾을 수 없습니다.');
+    if (!enemyTemplate) throw new NotFoundException('적 템플릿을 찾을 수 없습니다.');
 
-const enemyState = await this.prisma.enemyState.create({
-  data: {
-    runId,
-    roomId,
-    templateId: enemyTemplate.id,
-    hp: enemyTemplate.hp,
-    hpMax: enemyTemplate.hp,
-    atk: enemyTemplate.atk,
-    def: enemyTemplate.def,
-    spd: enemyTemplate.spd,
-    statusJson: [],
-    patternStateJson: enemyTemplate.patternJson || [],
-  }
-});
-
-if (enemyTemplate && !room.enemyId) {
-  await this.prisma.runRoom.update({
-    where: { id: roomId },
-    data: {
-      enemyId: enemyTemplate.id,
-      enemyState: {
-        connect: { id: enemyState.id }
+    const enemyState = await this.prisma.enemyState.create({
+      data: {
+        runId,
+        roomId,
+        templateId: enemyTemplate.id,
+        hp: enemyTemplate.hp,
+        hpMax: enemyTemplate.hp,
+        atk: enemyTemplate.atk,
+        def: enemyTemplate.def,
+        spd: enemyTemplate.spd,
+        statusJson: [],
+        patternStateJson: enemyTemplate.patternJson || [],
       }
-    }
-  });
-}
+    });
+
+      if (enemyTemplate && !room.enemyId) {
+        await this.prisma.runRoom.update({
+          where: { id: roomId },
+          data: {
+            enemyId: enemyTemplate.id,
+            enemyState: {
+              connect: { id: enemyState.id }
+            }
+          }
+        });
+      }
 
       const [sword, owner] = await Promise.all([
         this.prisma.swordState.findUnique({ where: { runId } }),
@@ -437,15 +440,6 @@ if (enemyTemplate && !room.enemyId) {
       det: ownerDb.det, greed: ownerDb.greed, bold: ownerDb.bold,
       caut: ownerDb.caut, mercy: ownerDb.mercy,
     };
-
-    console.log("patternJson raw:", enemyDB.template.patternJson);
-console.log("typeof:", typeof enemyDB.template.patternJson);
-console.log("isArray:", Array.isArray(enemyDB.template.patternJson));
-
-console.log("patternJson raw:", enemyDB.statusJson);
-console.log("typeof:", typeof enemyDB.statusJson);
-console.log("isArray:", Array.isArray(enemyDB.statusJson));
-
 
     const ctx: BattleContext = {
       turnNumber: turnCount + 1,
@@ -740,6 +734,7 @@ console.log("isArray:", Array.isArray(enemyDB.statusJson));
 
     if (!sword) throw new NotFoundException('검 상태를 찾을 수 없습니다.');
     if (!item) throw new NotFoundException('아이템을 찾을 수 없습니다.');
+    if (sword.gold < item.shopPrice) throw new BadRequestException('골드가 부족합니다.');
 
     const effect = item.effectJson as Record<string, number | string>;
     const updateData: Record<string, unknown> = {};
@@ -757,6 +752,7 @@ console.log("isArray:", Array.isArray(enemyDB.statusJson));
     if (effect.elementChange) updateData.element = effect.elementChange;
 
     updateData.absorbedItemIds = [...sword.absorbedItemIds, itemId];
+    updateData.gold = sword.gold - item.shopPrice;
     if (item.tags.length > 0) {
       updateData.tags = [...new Set([...sword.tags, ...item.tags])];
     }
@@ -767,6 +763,112 @@ console.log("isArray:", Array.isArray(enemyDB.statusJson));
     });
 
     return { swordState: updated };
+  }
+
+  // ─── 상점 아이템 목록 ─────────────────────────────────────────────────────
+
+  async getShopItems(runId: string, userId: string) {
+    const run = await this.prisma.run.findFirst({ where: { id: runId, userId, status: 'active' } });
+    if (!run) throw new NotFoundException('활성 런을 찾을 수 없습니다.');
+
+    const sword = await this.prisma.swordState.findUnique({ where: { runId } });
+    if (!sword) throw new NotFoundException('검 상태를 찾을 수 없습니다.');
+
+    // 흡수한 아이템 제외, 층별 가중 랜덤 4개
+    const allItems = await this.prisma.itemTemplate.findMany({
+      where: { id: { notIn: sword.absorbedItemIds } },
+    });
+    const shuffled = allItems.sort(() => Math.random() - 0.5).slice(0, 4);
+
+    return { items: shuffled, gold: sword.gold };
+  }
+
+  // ─── 방 완료 처리 (rest/event/shop용) ───────────────────────────────────
+
+  async completeRoom(runId: string, userId: string, roomId: string) {
+    const [run, room] = await Promise.all([
+      this.prisma.run.findFirst({ where: { id: runId, userId, status: 'active' } }),
+      this.prisma.runRoom.findUnique({ where: { id: roomId } }),
+    ]);
+
+    if (!run) throw new NotFoundException('활성 런을 찾을 수 없습니다.');
+    if (!room || room.runId !== runId) throw new NotFoundException('방을 찾을 수 없습니다.');
+    if (room.status === 'completed') return { status: 'already_completed', ownerState: null };
+
+    await this.prisma.runRoom.update({ where: { id: roomId }, data: { status: 'completed' } });
+    await this.unlockNextRoom(runId, room);
+
+    // rest 방이면 서버에서 HP 회복 처리
+    let ownerState: Awaited<ReturnType<typeof this.prisma.ownerState.update>> | null = null;
+    if (room.roomType === 'rest') {
+      const owner = await this.prisma.ownerState.findUnique({ where: { runId } });
+      if (owner) {
+        const healAmount = Math.floor(owner.hpMax * 0.3);
+        const newHp = Math.min(owner.hpMax, owner.hp + healAmount);
+        ownerState = await this.prisma.ownerState.update({
+          where: { runId },
+          data: { hp: newHp },
+        });
+      }
+    }
+
+    return { status: 'completed', ownerState };
+  }
+
+  // ─── 이벤트 선택 처리 ──────────────────────────────────────────────────
+
+  async chooseEvent(
+    runId: string,
+    userId: string,
+    eventId: string,
+    choiceIndex: number,
+    roomId: string,
+  ) {
+    const run = await this.prisma.run.findFirst({ where: { id: runId, userId, status: 'active' } });
+    if (!run) throw new NotFoundException('활성 런을 찾을 수 없습니다.');
+
+    const outcome = this.resolveEventOutcome(eventId, choiceIndex);
+
+    // 보상 적용 (룰 기반, STB 조정)
+    if (outcome.stbBonus) {
+      const sword = await this.prisma.swordState.findUnique({ where: { runId } });
+      if (sword) {
+        await this.prisma.swordState.update({
+          where: { runId },
+          data: { stb: Math.min(20, Math.max(1, sword.stb + outcome.stbBonus)) },
+        });
+      }
+    }
+
+    // 방 완료 + 다음 방 잠금 해제
+    if (roomId) {
+      await this.completeRoom(runId, userId, roomId);
+    }
+
+    return { outcome: { text: outcome.text, tag: outcome.tag } };
+  }
+
+  private resolveEventOutcome(
+    eventId: string,
+    choiceIndex: number,
+  ): { text: string; tag: string; stbBonus?: number } {
+    const id = eventId.toUpperCase();
+
+    if (id === 'EVENT_MYSTERY') {
+      if (choiceIndex === 0) {
+        return {
+          text: '낡은 제단이 검의 힘을 흡수했다. 검날이 미묘하게 안정되는 기분이다.',
+          tag: 'buff',
+          stbBonus: 1,
+        };
+      }
+      return {
+        text: '조용히 지나쳤다. 뒤에서 무언가 바스러지는 소리가 들렸다.',
+        tag: 'neutral',
+      };
+    }
+
+    return { text: '알 수 없는 결과가 발생했다.', tag: 'neutral' };
   }
 
   // ─── 활성 스킬 조회 (전투 UI용) ─────────────────────────────────────────

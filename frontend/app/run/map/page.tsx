@@ -19,6 +19,8 @@ import { Progress } from "@/components/ui/progress";
 import { api, type RoomData } from "@/lib/api";
 import { useRunStore } from "@/store/runStore";
 
+const DUNGEON_FLOORS = 3;
+
 const ROOM_CONFIG: Record<
   string,
   { label: string; icon: React.ReactNode; color: string }
@@ -65,6 +67,7 @@ export default function DungeonMapPage() {
     setSwordState,
     setOwnerState,
     setFloorMap,
+    setCurrentFloor,
     ownerState,
     swordState,
     currentFloor,
@@ -172,9 +175,34 @@ export default function DungeonMapPage() {
         <h2 className="text-xs text-muted-foreground uppercase tracking-wider">
           선택 가능한 방
         </h2>
-        {availableRooms.length === 0 ? (
+        {availableRooms.length === 0 && completedCount === totalRooms && totalRooms > 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col gap-3"
+          >
+            <Card className="p-4 border-white/10 bg-white/5 text-center text-sm text-muted-foreground">
+              {currentFloor}층의 모든 방을 완료했다.
+            </Card>
+            {currentFloor < DUNGEON_FLOORS ? (
+              <Button
+                className="w-full"
+                onClick={() => setCurrentFloor(currentFloor + 1)}
+              >
+                {currentFloor + 1}층으로 내려가기
+              </Button>
+            ) : (
+              <Button
+                className="w-full bg-purple-600 hover:bg-purple-700"
+                onClick={() => router.push("/run/end")}
+              >
+                던전 완료 — 귀환하기
+              </Button>
+            )}
+          </motion.div>
+        ) : availableRooms.length === 0 ? (
           <Card className="p-4 border-white/10 bg-white/5 text-center text-sm text-muted-foreground">
-            이 층의 모든 방을 완료했다.
+            로딩 중...
           </Card>
         ) : (
           availableRooms.map((room, i) => {
