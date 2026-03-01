@@ -21,7 +21,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { api, SkillInfo, type TurnLog } from "@/lib/api";
+import { api, SkillInfo, DroppedItem, type TurnLog } from "@/lib/api";
 import { useRunStore } from "@/store/runStore";
 import { ELEMENT_COLOR, ELEMENT_LABEL } from "@/lib/element";
 
@@ -200,6 +200,12 @@ export default function BattlePage() {
   const [activeSkills, setActiveSkills] = useState<SkillInfo[]>([]);
   const [combatPhase, setCombatPhase] = useState<CombatPhase>("idle");
 
+  // 전투 보상 모달 상태
+  const [showRewardModal, setShowRewardModal] = useState(false);
+  const [rewardItems, setRewardItems] = useState<DroppedItem[]>([]);
+  const [pendingSkillSwapId, setPendingSkillSwapId] = useState<string | null>(null);
+  const [absorbingId, setAbsorbingId] = useState<string | null>(null);
+
   const turnCounterRef = useRef(1);
   const logEndRef = useRef<HTMLDivElement>(null);
 
@@ -345,9 +351,19 @@ export default function BattlePage() {
 
       // 전투 종료
       if (result.battleEnd) {
-        setTimeout(() => {
-          router.push(result.battleEnd!.won ? "/run/map" : "/run/end");
-        }, 900);
+        if (result.battleEnd.won) {
+          const drops = result.battleEnd.droppedItems ?? [];
+          setTimeout(() => {
+            if (drops.length > 0) {
+              setRewardItems(drops);
+              setShowRewardModal(true);
+            } else {
+              router.push("/run/map");
+            }
+          }, 900);
+        } else {
+          setTimeout(() => router.push("/run/end"), 900);
+        }
       }
     },
   });
@@ -982,6 +998,109 @@ export default function BattlePage() {
               className="bg-white text-black hover:bg-white/90"
             >
               사용
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ═══════════════════════════════════════════════════════
+          전투 보상 모달
+      ═══════════════════════════════════════════════════════ */}
+      <Dialog open={showRewardModal} onOpenChange={() => {}}>
+        <DialogContent className="max-w-xs rounded-2xl border-white/15 bg-[#0F1219]">
+          <DialogHeader>
+            <DialogTitle className="text-base text-amber-300">
+              전투 승리 — 전리품
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-2">
+            {rewardItems.length === 0 ? (
+              <p className="text-sm text-white/40 text-center py-4">
+                드롭 아이템 없음
+              </p>
+            ) : (
+              rewardItems.map((item) => {
+                const rarityColor =
+                  item.rarity === "epic"
+                    ? "text-purple-300 border-purple-500/40"
+                    : item.rarity === "rare"
+                      ? "text-blue-300 border-blue-500/40"
+                      : "text-slate-300 border-white/20";
+                return (
+                  <div
+                    key={item.id}
+                    className={`rounded-xl border p-3 bg-white/4 ${rarityColor}`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold leading-tight">
+                          {item.aiName ?? item.id}
+                        </p>
+                        <p className="text-[10px] text-white/35 mt-0.5 leading-tight line-clamp-2">
+                          {item.aiDesc ?? ""}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={`shrink-0 text-[9px] px-1.5 py-0 h-4 ${rarityColor}`}
+                      >
+                        {item.rarity}
+                      </Badge>
+                    </div>
+                    <div className="flex gap-1.5 mt-2">
+                      <Button
+                        size="sm"
+                        disabled={absorbingId === item.id}
+                        className="flex-1 h-7 text-xs bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/30"
+                        onClick={async () => {
+                          if (!runId) return;
+                          setAbsorbingId(item.id);
+                          try {
+                            const res = await api.run.absorbBattleDrop(runId, item.id);
+                            setSwordState(res.swordState);
+                            if (res.pendingSkillSwap) {
+                              setPendingSkillSwapId(res.pendingSkillSwap);
+                            }
+                          } catch {
+                            // 흡수 실패는 무시하고 계속
+                          } finally {
+                            setAbsorbingId(null);
+                            setRewardItems((prev) => prev.filter((i) => i.id !== item.id));
+                          }
+                        }}
+                      >
+                        {absorbingId === item.id ? "..." : "흡수"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="flex-1 h-7 text-xs text-white/40"
+                        onClick={() =>
+                          setRewardItems((prev) => prev.filter((i) => i.id !== item.id))
+                        }
+                      >
+                        버리기
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              className="w-full bg-white text-black hover:bg-white/90"
+              disabled={rewardItems.length > 0}
+              onClick={() => {
+                setShowRewardModal(false);
+                if (pendingSkillSwapId) {
+                  router.push(`/run/skill-swap?skillId=${pendingSkillSwapId}`);
+                } else {
+                  router.push("/run/map");
+                }
+              }}
+            >
+              {rewardItems.length > 0 ? `남은 아이템 ${rewardItems.length}개` : "계속"}
             </Button>
           </DialogFooter>
         </DialogContent>

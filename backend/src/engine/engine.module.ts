@@ -4,6 +4,8 @@ import { CompatibilityEngine } from './compatibility.engine';
 import { OverdriveEngine } from './overdrive.engine';
 import { MagicSwordEngine } from './magic-sword.engine';
 import { CombatEngine } from './combat.engine';
+import { RewardEngine } from './reward.engine';
+import { TriggerEngine } from './trigger.engine';
 
 @Module({
   providers: [
@@ -12,6 +14,8 @@ import { CombatEngine } from './combat.engine';
     OverdriveEngine,
     MagicSwordEngine,
     CombatEngine,
+    RewardEngine,
+    TriggerEngine,
   ],
   exports: [
     ElementEngine,
@@ -19,6 +23,8 @@ import { CombatEngine } from './combat.engine';
     OverdriveEngine,
     MagicSwordEngine,
     CombatEngine,
+    RewardEngine,
+    TriggerEngine,
   ],
 })
 export class EngineModule {}

@@ -4,6 +4,9 @@ import { AiService } from '../ai/ai.service';
 import { CompatibilityEngine } from '../../engine/compatibility.engine';
 import { CombatEngine, BattleContext, SkillInput } from '../../engine/combat.engine';
 import { MagicSwordEngine } from '../../engine/magic-sword.engine';
+import { RewardEngine } from '../../engine/reward.engine';
+import { TriggerEngine } from '../../engine/trigger.engine';
+import { buildTagMap } from '../../engine/mutation';
 import type {
   Element,
   OwnerClass,
@@ -110,6 +113,32 @@ function generateDungeonMap(
   return rooms;
 }
 
+// ─── 스킬 업그레이드 규칙 ─────────────────────────────────────────────────────
+
+const SKILL_UPGRADE_RULES: Array<{ tag: string; count: number; from: string; to: string }> = [
+  { tag: 'curse',  count: 3, from: 'SK_BASIC_SLASH', to: 'SK_CURSED_SLASH' },
+  { tag: 'dark',   count: 3, from: 'SK_FREEZE',      to: 'SK_DARK_FREEZE'  },
+  { tag: 'combat', count: 3, from: 'SK_BASIC_SLASH', to: 'SK_BATTLE_CRY'   },
+  { tag: 'combat', count: 3, from: 'SK_SYNC_PULSE',  to: 'SK_MULTI_STRIKE' },
+];
+
+function checkSkillUpgrades(
+  tagMap: Record<string, number>,
+  currentSkillIds: string[],
+): { from: string; to: string }[] {
+  const upgrades: { from: string; to: string }[] = [];
+  for (const rule of SKILL_UPGRADE_RULES) {
+    if (
+      (tagMap[rule.tag] ?? 0) >= rule.count &&
+      currentSkillIds.includes(rule.from) &&
+      !currentSkillIds.includes(rule.to)
+    ) {
+      upgrades.push({ from: rule.from, to: rule.to });
+    }
+  }
+  return upgrades;
+}
+
 @Injectable()
 export class RunService {
   constructor(
@@ -118,6 +147,8 @@ export class RunService {
     private readonly compatEngine: CompatibilityEngine,
     private readonly combatEngine: CombatEngine,
     private readonly magicSwordEngine: MagicSwordEngine,
+    private readonly rewardEngine: RewardEngine,
+    private readonly triggerEngine: TriggerEngine,
   ) {}
 
   // ─── 런 시작 (주인 후보 3명 생성) ──────────────────────────────────────────
@@ -538,6 +569,7 @@ export class RunService {
     }
 
     // 전투 승리 체크
+    let droppedItems: Array<{ id: string; aiName: string | null; aiDesc: string | null; tags: string[]; effectJson: Record<string, unknown>; rarity: string }> = [];
     if (result.battleEnd?.won || result.enemyStateAfter.hp <= 0) {
       await this.prisma.runRoom.update({
         where: { id: roomId },
@@ -545,6 +577,25 @@ export class RunService {
       });
       // 다음 방 잠금 해제
       await this.unlockNextRoom(runId, room);
+
+      // 아이템 드롭 생성
+      const allItems = await this.prisma.itemTemplate.findMany();
+      const dropIds = this.rewardEngine.generateBattleDrops(
+        run.currentFloor,
+        swordDb.absorbedItemIds,
+        allItems,
+      );
+      droppedItems = dropIds
+        .map(id => allItems.find(i => i.id === id))
+        .filter((i): i is NonNullable<typeof i> => !!i)
+        .map(i => ({
+          id: i.id,
+          aiName: i.aiName,
+          aiDesc: i.aiDesc,
+          tags: i.tags,
+          effectJson: i.effectJson as Record<string, unknown>,
+          rarity: i.rarity,
+        }));
     }
 
     // 엔진 스냅샷(전투 변동값)과 DB 비변동 필드를 머지해서 프론트에 전달
@@ -574,7 +625,9 @@ export class RunService {
         compatibilityScore: ownerDb.compatibilityScore,
       },
       enemyState: result.enemyStateAfter,
-      battleEnd: result.battleEnd,
+      battleEnd: result.battleEnd
+        ? { ...result.battleEnd, droppedItems: droppedItems.length > 0 ? droppedItems : undefined }
+        : undefined,
     };
   }
 
@@ -748,15 +801,17 @@ export class RunService {
 
   // ─── 아이템 흡수 ─────────────────────────────────────────────────────────
 
-  async absorbItem(runId: string, userId: string, itemId: string) {
-    const [sword, item] = await Promise.all([
+  async absorbItem(runId: string, userId: string, itemId: string, free = false) {
+    const [run, sword, item] = await Promise.all([
+      this.prisma.run.findFirst({ where: { id: runId, userId, status: 'active' } }),
       this.prisma.swordState.findUnique({ where: { runId } }),
       this.prisma.itemTemplate.findUnique({ where: { id: itemId } }),
     ]);
 
+    if (!run) throw new NotFoundException('활성 런을 찾을 수 없습니다.');
     if (!sword) throw new NotFoundException('검 상태를 찾을 수 없습니다.');
     if (!item) throw new NotFoundException('아이템을 찾을 수 없습니다.');
-    if (sword.gold < item.shopPrice) throw new BadRequestException('골드가 부족합니다.');
+    if (!free && sword.gold < item.shopPrice) throw new BadRequestException('골드가 부족합니다.');
 
     const effect = item.effectJson as Record<string, number | string>;
     const updateData: Record<string, unknown> = {};
@@ -774,15 +829,126 @@ export class RunService {
     if (effect.elementChange) updateData.element = effect.elementChange;
 
     updateData.absorbedItemIds = [...sword.absorbedItemIds, itemId];
-    updateData.gold = sword.gold - item.shopPrice;
+    updateData.gold = free ? sword.gold : sword.gold - item.shopPrice;
+
+    const newTags = item.tags.length > 0 ? [...sword.tags, ...item.tags] : sword.tags;
     if (item.tags.length > 0) {
-      // Set 없이 중복 허용 → 같은 태그 여러 번 흡수 시 변이 스택 누적
-      updateData.tags = [...sword.tags, ...item.tags];
+      updateData.tags = newTags;
+    }
+
+    // ── 스킬 획득 처리 ──────────────────────────────────────────────────────
+    let pendingSkillSwap: string | undefined;
+    let newSkillIds = [...sword.activeSkillIds];
+
+    if (effect.addSkillId) {
+      const newSkillId = effect.addSkillId as string;
+      if (!newSkillIds.includes(newSkillId)) {
+        if (newSkillIds.length < 4) {
+          newSkillIds = [...newSkillIds, newSkillId];
+          updateData.activeSkillIds = newSkillIds;
+        } else {
+          // 슬롯 초과 → pendingSkillSwap 반환 (DB 미반영)
+          pendingSkillSwap = newSkillId;
+        }
+      }
+    }
+
+    // ── 스킬 업그레이드 체크 ─────────────────────────────────────────────────
+    const tagMap = buildTagMap(newTags);
+    const upgrades = checkSkillUpgrades(tagMap, newSkillIds);
+    if (upgrades.length > 0) {
+      for (const u of upgrades) {
+        newSkillIds = newSkillIds.map(id => (id === u.from ? u.to : id));
+      }
+      updateData.activeSkillIds = newSkillIds;
+    }
+
+    // ── 트리거 체크 ──────────────────────────────────────────────────────────
+    const ownerDb = await this.prisma.ownerState.findUnique({ where: { runId } });
+    const triggerResults = this.triggerEngine.checkTriggers(
+      tagMap,
+      sword.firedTriggerIds ?? [],
+      (ownerDb?.class ?? 'warrior') as import('../../shared/types/game.types').OwnerClass,
+      ownerDb?.compatibilityScore ?? 50,
+      newSkillIds,
+    );
+
+    const firedTriggerIds = [...(sword.firedTriggerIds ?? [])];
+    for (const t of triggerResults) {
+      switch (t.outcome.type) {
+        case 'stat_boost':
+          updateData[t.outcome.stat] = Math.min(
+            t.outcome.stat === 'atk' ? 60 : t.outcome.stat === 'def' ? 40 : t.outcome.stat === 'spd' ? 30 : 20,
+            ((updateData[t.outcome.stat] as number | undefined) ?? sword[t.outcome.stat as keyof typeof sword] as number) + t.outcome.amount,
+          );
+          break;
+        case 'sync_restore':
+          updateData.syncMax = Math.min(20, ((updateData.syncMax as number | undefined) ?? sword.syncMax) + t.outcome.amount);
+          break;
+        case 'skill_acquire': {
+          const sk = t.outcome.skillId;
+          if (!newSkillIds.includes(sk)) {
+            if (newSkillIds.length < 4) {
+              newSkillIds = [...newSkillIds, sk];
+              updateData.activeSkillIds = newSkillIds;
+            } else {
+              pendingSkillSwap = pendingSkillSwap ?? sk;
+            }
+          }
+          break;
+        }
+        case 'skill_upgrade': {
+          const { from, to } = t.outcome;
+          if (newSkillIds.includes(from) && !newSkillIds.includes(to)) {
+            newSkillIds = newSkillIds.map(id => (id === from ? to : id));
+            updateData.activeSkillIds = newSkillIds;
+          }
+          break;
+        }
+      }
+      if (t.ruleId && !firedTriggerIds.includes(t.ruleId)) {
+        firedTriggerIds.push(t.ruleId);
+      }
+    }
+    if (firedTriggerIds.length > (sword.firedTriggerIds ?? []).length) {
+      updateData.firedTriggerIds = firedTriggerIds;
     }
 
     const updated = await this.prisma.swordState.update({
       where: { runId },
       data: updateData,
+    });
+
+    return {
+      swordState: updated,
+      pendingSkillSwap,
+      skillUpgrades: upgrades.length > 0 ? upgrades : undefined,
+      triggerEvents: triggerResults.length > 0 ? triggerResults : undefined,
+    };
+  }
+
+  // ─── 전투 보상 무료 흡수 ──────────────────────────────────────────────────
+
+  async absorbBattleDrop(runId: string, userId: string, itemId: string) {
+    return this.absorbItem(runId, userId, itemId, true);
+  }
+
+  // ─── 스킬 교체 (4슬롯 초과 시) ───────────────────────────────────────────
+
+  async swapSkill(runId: string, userId: string, removeSkillId: string, addSkillId: string) {
+    const run = await this.prisma.run.findFirst({ where: { id: runId, userId, status: 'active' } });
+    if (!run) throw new NotFoundException('활성 런을 찾을 수 없습니다.');
+    const sword = await this.prisma.swordState.findUnique({ where: { runId } });
+    if (!sword) throw new NotFoundException('검 상태를 찾을 수 없습니다.');
+    if (!sword.activeSkillIds.includes(removeSkillId))
+      throw new BadRequestException('교체할 스킬을 보유하고 있지 않습니다.');
+    const skill = await this.prisma.skillTemplate.findUnique({ where: { id: addSkillId } });
+    if (!skill) throw new BadRequestException('추가할 스킬이 존재하지 않습니다.');
+
+    const newSkillIds = sword.activeSkillIds.map(id => (id === removeSkillId ? addSkillId : id));
+    const updated = await this.prisma.swordState.update({
+      where: { runId },
+      data: { activeSkillIds: newSkillIds },
     });
 
     return { swordState: updated };

@@ -90,6 +90,13 @@ export interface SkillEffect {
   syncRestore?: number;
   extraTurn?: boolean;
   aoeMultiplier?: number;
+  // 확장 효과
+  multiHit?: number;          // N회 연속 타격 (데미지를 N등분)
+  lifesteal?: number;         // 피해량 × ratio → owner HP 회복 (0.0~1.0)
+  stbRestore?: number;        // STB 직접 회복
+  selfHealAmount?: number;    // 주인 HP 회복 (healAmount와 별도)
+  statusDmgBonus?: number;    // 적 상태이상 시 추가 배율 (e.g. 1.5)
+  shieldPierce?: boolean;     // 적 DEF 완전 무시
 }
 
 export interface SkillRisk {
@@ -193,12 +200,14 @@ export interface SwordStateSnapshot {
   spd: number;
   isOverdriven: boolean;
   isMagicSword: boolean;
+  shield?: number;
   statusEffects: AppliedStatus[];
 }
 
 export interface OwnerStateSnapshot {
   hp: number;
   hpMax: number;
+  shield?: number;
   statusEffects: AppliedStatus[];
 }
 
@@ -215,14 +224,17 @@ export interface EnemyStateSnapshot {
   statusEffects: AppliedStatus[];
 }
 
-export interface BattleEndResult {
-  won: boolean;
-  rewards?: BattleReward[];
-  ownerDied?: boolean;
+export interface DroppedItem {
+  id: string;
+  aiName: string | null;
+  aiDesc: string | null;
+  tags: string[];
+  effectJson: Record<string, unknown>;
+  rarity: string;
 }
 
-export interface BattleReward {
-  type: 'item' | 'sync' | 'trait_candidate';
-  itemId?: string;
-  traitId?: string;
+export interface BattleEndResult {
+  won: boolean;
+  ownerDied?: boolean;
+  droppedItems?: DroppedItem[];
 }

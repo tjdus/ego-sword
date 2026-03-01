@@ -43,6 +43,38 @@ async function main() {
 
       // 리스크 (1개)
       { id: 'SK_OVERDRIVE_SURGE', type: 'risk', category: 'overdrive', cost: 1, element: 'neutral', tags: ['overdrive', 'risk'], effectJson: { damageMultiplier: 1.5 }, riskJson: { stbChange: -2, domChange: 1 }, aiName: '폭주 개방', aiDesc: '안정을 희생해 폭발적인 힘을 끌어낸다.', aiVfxKeywords: ['붉은 기운', '균열'], aiQuote: '상관없어.' },
+
+      // ─── 업그레이드/획득 스킬 10개 ──────────────────────────────────────────
+
+      // curse×3 업그레이드: SK_BASIC_SLASH → SK_CURSED_SLASH
+      { id: 'SK_CURSED_SLASH', type: 'attack', category: 'single', cost: 3, element: 'dark', tags: ['slash', 'curse', 'dark'], effectJson: { damageMultiplier: 1.4 }, riskJson: { domChange: 1 }, aiName: '저주받은 참격', aiDesc: '저주가 응집된 칼날이 영혼까지 베어낸다.', aiVfxKeywords: ['검보라 균열', '저주 잔상'], aiQuote: '이게 진짜 나야.' },
+
+      // combat×3 업그레이드: SK_BASIC_SLASH → SK_BATTLE_CRY
+      { id: 'SK_BATTLE_CRY', type: 'attack', category: 'single', cost: 2, element: 'neutral', tags: ['slash', 'combat', 'war'], effectJson: { damageMultiplier: 1.3, stbRestore: 1 }, aiName: '전장의 함성', aiDesc: '전투를 거듭한 검이 울부짖는다. 안정이 돌아온다.', aiVfxKeywords: ['강렬한 섬광', '전투 기운'], aiQuote: '아직 끝나지 않았어.' },
+
+      // dark×3 업그레이드: SK_FREEZE → SK_DARK_FREEZE
+      { id: 'SK_DARK_FREEZE', type: 'control', category: 'debuff', cost: 3, element: 'dark', tags: ['freeze', 'dark', 'curse'], effectJson: { damageMultiplier: 0.6, debuff: 'freeze', debuffDuration: 2 }, aiName: '어둠의 빙결', aiDesc: '어둠의 냉기가 적의 영혼까지 얼려버린다.', aiVfxKeywords: ['검은 얼음', '어둠 결정'], aiQuote: '영원히 멈춰라.' },
+
+      // ITEM_SOUL_TOME 획득
+      { id: 'SK_SOUL_REAP', type: 'attack', category: 'single', cost: 3, element: 'dark', tags: ['dark', 'soul', 'drain'], effectJson: { damageMultiplier: 1.2, lifesteal: 0.3 }, aiName: '영혼 추수', aiDesc: '적의 생명력을 빼앗아 자신을 채운다.', aiVfxKeywords: ['영혼 흡수', '보라 빛'], aiQuote: '네 것이 내 것이 된다.' },
+
+      // ITEM_THUNDER_SCROLL 획득
+      { id: 'SK_LIGHTNING_BOLT', type: 'attack', category: 'single', cost: 5, element: 'thunder', tags: ['strike', 'lightning', 'thunder'], effectJson: { damageMultiplier: 1.8, debuff: 'stun', debuffDuration: 2 }, aiName: '뇌전 벼락', aiDesc: '하늘을 가르는 번개가 직격으로 떨어진다.', aiVfxKeywords: ['벼락', '눈부신 섬광'], aiQuote: '하늘이 대답한다.' },
+
+      // ITEM_HYMN_STONE 획득
+      { id: 'SK_HEALING_HYMN', type: 'resource', category: 'sync', cost: 3, element: 'light', tags: ['heal', 'light', 'holy'], effectJson: { selfHealAmount: 15, stbRestore: 2 }, aiName: '치유의 성가', aiDesc: '빛의 노래가 상처를 치유하고 마음을 안정시킨다.', aiVfxKeywords: ['온화한 빛', '치유 파동'], aiQuote: '괜찮아질 거야.' },
+
+      // ITEM_VENOM_FANG 획득
+      { id: 'SK_VENOM_SLASH', type: 'attack', category: 'single', cost: 2, element: 'poison', tags: ['slash', 'poison', 'venom'], effectJson: { damageMultiplier: 1.0, debuff: 'poison', debuffDuration: 4 }, aiName: '맹독 베기', aiDesc: '독이 스민 칼날이 오래 타오르는 상처를 남긴다.', aiVfxKeywords: ['독록 잔상', '독기'], aiQuote: '천천히… 아파라.' },
+
+      // ITEM_BERSERKER_HEART 획득
+      { id: 'SK_BERSERK_CHARGE', type: 'risk', category: 'overdrive', cost: 3, element: 'neutral', tags: ['charge', 'berserker', 'risk'], effectJson: { damageMultiplier: 2.0 }, riskJson: { stbChange: -3 }, aiName: '광폭 돌격', aiDesc: '모든 것을 걸고 돌진한다. 안정이 크게 무너진다.', aiVfxKeywords: ['붉은 기운', '폭발 충격'], aiQuote: '상관없어!!' },
+
+      // ITEM_BLADE_SHARD 획득
+      { id: 'SK_MULTI_STRIKE', type: 'attack', category: 'chain', cost: 4, element: 'neutral', tags: ['combo', 'chain', 'multi'], effectJson: { damageMultiplier: 0.5, multiHit: 3 }, aiName: '삼연격', aiDesc: '세 번의 빠른 연격이 연속으로 이어진다.', aiVfxKeywords: ['3연 섬광', '잔상 3개'], aiQuote: '하나, 둘, 셋.' },
+
+      // ITEM_GUARDIAN_CORE 획득
+      { id: 'SK_COUNTER_STANCE', type: 'defense', category: 'shield', cost: 2, element: 'neutral', tags: ['guard', 'counter', 'steel'], effectJson: { shieldAmount: 25, syncRestore: 2 }, aiName: '반격 자세', aiDesc: '견고하게 자세를 잡아 방벽을 치고 동조력을 모은다.', aiVfxKeywords: ['강철 방어막', '집중 빛'], aiQuote: '받아치겠다.' },
     ],
   });
 
@@ -109,6 +141,24 @@ async function main() {
       { id: 'ITEM_SYNC_POTION', tags: ['restore', 'sync'], effectJson: { syncMaxBonus: 3 }, rarity: 'common', shopPrice: 12, aiName: '동조 포션', aiDesc: '동조력을 영구히 높인다.' },
       { id: 'ITEM_STABILITY_CHARM', tags: ['restore', 'stability'], effectJson: { stbBonus: 3 }, rarity: 'common', shopPrice: 12, aiName: '안정 부적', aiDesc: '흔들림을 잠재우는 부적.' },
       { id: 'ITEM_PURIFY_STONE', tags: ['purify', 'light'], effectJson: { stbBonus: 2, domChange: -1 }, rarity: 'rare', shopPrice: 20, aiName: '정화석', aiDesc: '어둠을 씻어내는 빛의 돌.' },
+
+      // ─── 스킬 부여 아이템 7개 ────────────────────────────────────────────────
+
+      { id: 'ITEM_SOUL_TOME', tags: ['soul', 'dark'], effectJson: { atkBonus: 2, domChange: 1, addSkillId: 'SK_SOUL_REAP' }, rarity: 'epic', shopPrice: 20, aiName: '영혼 서적', aiDesc: '금지된 지식이 담긴 고서. 영혼 추수를 가르쳐준다.' },
+      { id: 'ITEM_THUNDER_SCROLL', tags: ['thunder', 'lightning'], effectJson: { addSkillId: 'SK_LIGHTNING_BOLT' }, rarity: 'rare', shopPrice: 18, aiName: '뇌전 두루마리', aiDesc: '번개를 소환하는 고대 주문서.' },
+      { id: 'ITEM_HYMN_STONE', tags: ['light', 'holy'], effectJson: { stbBonus: 1, addSkillId: 'SK_HEALING_HYMN' }, rarity: 'rare', shopPrice: 18, aiName: '성가석', aiDesc: '치유의 노래가 새겨진 성스러운 돌.' },
+      { id: 'ITEM_VENOM_FANG', tags: ['poison', 'venom'], effectJson: { atkBonus: 1, addSkillId: 'SK_VENOM_SLASH' }, rarity: 'rare', shopPrice: 15, aiName: '독사 어금니', aiDesc: '뱀의 독이 스민 날카로운 이빨 조각.' },
+      { id: 'ITEM_BERSERKER_HEART', tags: ['berserker', 'combat'], effectJson: { stbBonus: -2, domChange: 1, addSkillId: 'SK_BERSERK_CHARGE' }, rarity: 'epic', shopPrice: 10, aiName: '광전사의 심장', aiDesc: '미친 전사의 심장. 광폭화 돌격을 각인한다.' },
+      { id: 'ITEM_BLADE_SHARD', tags: ['combat', 'sharp'], effectJson: { atkBonus: 1, addSkillId: 'SK_MULTI_STRIKE' }, rarity: 'rare', shopPrice: 16, aiName: '다검 파편', aiDesc: '여러 칼날의 파편이 합쳐진 것. 삼연격을 가르쳐준다.' },
+      { id: 'ITEM_GUARDIAN_CORE', tags: ['guard', 'stone'], effectJson: { defBonus: 2, addSkillId: 'SK_COUNTER_STANCE' }, rarity: 'rare', shopPrice: 16, aiName: '수호자의 핵', aiDesc: '수호자의 의지가 담긴 핵. 반격 자세를 전수한다.' },
+
+      // ─── 태그 누적용 신규 아이템 5개 ─────────────────────────────────────────
+
+      { id: 'ITEM_THUNDER_RING', tags: ['thunder', 'lightning'], effectJson: { atkBonus: 3, spdBonus: 1 }, rarity: 'rare', shopPrice: 14, aiName: '뇌전 반지', aiDesc: '번개가 새겨진 고리. 속도와 힘이 올라간다.' },
+      { id: 'ITEM_LIGHT_CRYSTAL', tags: ['light', 'holy'], effectJson: { syncMaxBonus: 1, stbBonus: 1 }, rarity: 'common', shopPrice: 12, aiName: '빛의 결정', aiDesc: '신성한 빛이 응결된 결정.' },
+      { id: 'ITEM_POISON_VIAL', tags: ['poison', 'venom'], effectJson: { atkBonus: 2, spdBonus: 2 }, rarity: 'common', shopPrice: 10, aiName: '독 바이알', aiDesc: '정제된 독이 담긴 작은 병.' },
+      { id: 'ITEM_SOUL_SHARD', tags: ['soul', 'dark'], effectJson: { atkBonus: 3, stbBonus: -1 }, rarity: 'rare', shopPrice: 8, aiName: '영혼 조각', aiDesc: '부서진 영혼의 파편. 힘을 주지만 불안정하다.' },
+      { id: 'ITEM_BERSERKER_SCAR', tags: ['berserker', 'combat'], effectJson: { atkBonus: 5, defBonus: -2 }, rarity: 'rare', shopPrice: 12, aiName: '광전사의 흉터', aiDesc: '수없는 전투에서 남은 흉터. 공격이 극대화된다.' },
     ],
   });
 
@@ -148,9 +198,9 @@ async function main() {
   });
 
   console.log('✅ Seed complete!');
-  console.log(`  - SkillTemplates: 20`);
+  console.log(`  - SkillTemplates: 30`);
   console.log(`  - TraitTemplates: 21`);
-  console.log(`  - ItemTemplates: 15`);
+  console.log(`  - ItemTemplates: 27`);
   console.log(`  - EnemyTemplates: 18`);
 }
 

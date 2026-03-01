@@ -95,13 +95,14 @@ model SwordState {
   stb             Int      @default(10)
   dom             Int      @default(0)
   element         String   @default("neutral")
-  activeSkillIds  String[]
-  passiveSkillIds String[]
-  absorbedItemIds String[]
-  tags            String[]
-  gold            Int      @default(30)
-  isOverdriven    Boolean  @default(false)
-  isMagicSword    Boolean  @default(false)
+  activeSkillIds   String[]
+  passiveSkillIds  String[]
+  absorbedItemIds  String[]
+  tags             String[]
+  firedTriggerIds  String[]
+  gold             Int      @default(30)
+  isOverdriven     Boolean  @default(false)
+  isMagicSword     Boolean  @default(false)
   updatedAt       DateTime @updatedAt
   run             Run      @relation(fields: [runId], references: [id])
 }

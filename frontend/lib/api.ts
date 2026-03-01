@@ -80,10 +80,25 @@ export const api = {
       }),
 
     absorbItem: (runId: string, itemId: string) =>
-      request<{ swordState: SwordState }>(`/api/run/${runId}/absorb`, {
+      request<AbsorbResult>(`/api/run/${runId}/absorb`, {
         method: "POST",
         body: JSON.stringify({ itemId }),
       }),
+
+    absorbBattleDrop: (runId: string, itemId: string) =>
+      request<AbsorbResult>(`/api/run/${runId}/battle-reward/absorb`, {
+        method: "POST",
+        body: JSON.stringify({ itemId }),
+      }),
+
+    swapSkill: (runId: string, removeSkillId: string, addSkillId: string) =>
+      request<{ swordState: SwordState }>(
+        `/api/run/${runId}/skill/swap`,
+        {
+          method: "POST",
+          body: JSON.stringify({ removeSkillId, addSkillId }),
+        },
+      ),
 
     endRun: (runId: string) =>
       request<RunEndResult>(`/api/run/${runId}/end`, { method: "POST" }),
@@ -231,12 +246,49 @@ export interface TurnInput {
   forceActionType?: "attack" | "defend" | "skill";
 }
 
+export interface DroppedItem {
+  id: string;
+  aiName: string | null;
+  aiDesc: string | null;
+  tags: string[];
+  effectJson: Record<string, unknown>;
+  rarity: string;
+}
+
+export interface SkillUpgrade {
+  from: string;
+  to: string;
+}
+
+export interface TriggerEvent {
+  ruleId: string;
+  outcome: {
+    type: string;
+    skillId?: string;
+    from?: string;
+    to?: string;
+    stat?: string;
+    amount?: number;
+  };
+}
+
+export interface AbsorbResult {
+  swordState: SwordState;
+  pendingSkillSwap?: string;
+  skillUpgrades?: SkillUpgrade[];
+  triggerEvents?: TriggerEvent[];
+}
+
 export interface TurnResult {
   result: { logs: TurnLog[] };
   swordState: SwordState;
   ownerState: OwnerState;
   enemyState: EnemyState;
-  battleEnd?: { won: boolean; ownerDied?: boolean; rewards?: unknown[] };
+  battleEnd?: {
+    won: boolean;
+    ownerDied?: boolean;
+    droppedItems?: DroppedItem[];
+  };
 }
 
 export interface TurnLog {

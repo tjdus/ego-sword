@@ -1,6 +1,3 @@
-
-import { PrismaService } from '../prisma/prisma.service';
-
 import {
   Controller,
   Post,
@@ -128,6 +125,26 @@ export class RunController {
     @Body() body: { itemId: string },
   ) {
     return this.runService.absorbItem(runId, req.user.userId, body.itemId);
+  }
+
+  // POST /api/run/:runId/battle-reward/absorb
+  @Post(':runId/battle-reward/absorb')
+  absorbBattleDrop(
+    @Param('runId') runId: string,
+    @Req() req: AuthRequest,
+    @Body() body: { itemId: string },
+  ) {
+    return this.runService.absorbBattleDrop(runId, req.user.userId, body.itemId);
+  }
+
+  // POST /api/run/:runId/skill/swap
+  @Post(':runId/skill/swap')
+  swapSkill(
+    @Param('runId') runId: string,
+    @Req() req: AuthRequest,
+    @Body() body: { removeSkillId: string; addSkillId: string },
+  ) {
+    return this.runService.swapSkill(runId, req.user.userId, body.removeSkillId, body.addSkillId);
   }
 
   // POST /api/run/:runId/end

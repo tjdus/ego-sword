@@ -10,26 +10,28 @@ export interface MutationResult {
 
 // ─── 태그 변이 정의 ────────────────────────────────────────────────────────────
 
+interface ThresholdEffect {
+  damageMult?: number;
+  extraDebuff?: StatusEffect;
+  debuffDuration?: number;
+  stbCostPerUse?: number;
+  namePrefix?: string;
+  // 확장 효과
+  debuffDurationBonus?: number;  // 기존 디버프 지속 연장
+  selfHealBonus?: number;        // selfHealAmount 추가
+  stbRestoreBonus?: number;      // stbRestore 추가
+  lifestealBonus?: number;       // lifesteal 추가
+}
+
 interface TagMutationDef {
   /** 어떤 스킬에 적용되는지 */
   appliesTo: 'attack' | 'element';
   /** appliesTo === 'element' 일 때 비교할 속성 */
   element?: string;
   /** 태그 수 ≥1 효과 */
-  threshold1: {
-    damageMult?: number;
-    extraDebuff?: StatusEffect;
-    debuffDuration?: number;
-    stbCostPerUse?: number;
-  };
+  threshold1: ThresholdEffect;
   /** 태그 수 ≥3 효과 (없으면 threshold1 재사용) */
-  threshold3?: {
-    damageMult?: number;
-    extraDebuff?: StatusEffect;
-    debuffDuration?: number;
-    stbCostPerUse?: number;
-    namePrefix?: string;
-  };
+  threshold3?: ThresholdEffect;
 }
 
 const TAG_MUTATIONS: Record<string, TagMutationDef> = {
@@ -75,6 +77,58 @@ const TAG_MUTATIONS: Record<string, TagMutationDef> = {
     appliesTo: 'element',
     element: 'ice',
     threshold1: { damageMult: 1.05 },
+  },
+  // ── thunder 빌드 (THUNDER_RING + THUNDER_CORE → 최대 ×4) ──────────────────
+  thunder: {
+    appliesTo: 'element',
+    element: 'thunder',
+    threshold1: { damageMult: 1.15, extraDebuff: 'stun', debuffDuration: 1 },
+    threshold3: { damageMult: 1.30, extraDebuff: 'stun', debuffDuration: 2, namePrefix: '천둥의 ' },
+  },
+  // ── lightning (thunder 보조 태그) ─────────────────────────────────────────
+  lightning: {
+    appliesTo: 'element',
+    element: 'thunder',
+    threshold1: { damageMult: 1.05 },
+  },
+  // ── light 빌드 (LIGHT_CRYSTAL + HYMN_STONE → 최대 ×3) ────────────────────
+  light: {
+    appliesTo: 'element',
+    element: 'light',
+    threshold1: { selfHealBonus: 3 },
+    threshold3: { selfHealBonus: 8, stbRestoreBonus: 1, namePrefix: '성스러운 ' },
+  },
+  // ── holy (light 보조 태그) ────────────────────────────────────────────────
+  holy: {
+    appliesTo: 'element',
+    element: 'light',
+    threshold1: { selfHealBonus: 2 },
+  },
+  // ── poison 빌드 (POISON_VIAL + VENOM_FANG → 최대 ×3) ─────────────────────
+  poison: {
+    appliesTo: 'element',
+    element: 'poison',
+    threshold1: { debuffDurationBonus: 1 },
+    threshold3: { debuffDurationBonus: 2, namePrefix: '맹독의 ' },
+  },
+  // ── venom (poison 보조 태그) ──────────────────────────────────────────────
+  venom: {
+    appliesTo: 'element',
+    element: 'poison',
+    threshold1: { damageMult: 1.05 },
+  },
+  // ── soul 빌드 (SOUL_SHARD + SOUL_TOME → 최대 ×3) ─────────────────────────
+  soul: {
+    appliesTo: 'element',
+    element: 'dark',
+    threshold1: { lifestealBonus: 0.15 },
+    threshold3: { lifestealBonus: 0.30, namePrefix: '영혼을 빨아들이는 ' },
+  },
+  // ── berserker 빌드 (BERSERKER_SCAR + BERSERKER_HEART → 최대 ×3) ──────────
+  berserker: {
+    appliesTo: 'attack',
+    threshold1: { damageMult: 1.20 },
+    threshold3: { damageMult: 1.40, stbCostPerUse: 2, namePrefix: '광폭화한 ' },
   },
 };
 
@@ -143,12 +197,32 @@ export function computeSkillMutation(
       augmented.debuffDuration = thr.debuffDuration ?? 1;
     }
 
-    // ③ STB 소모
+    // ③ 디버프 지속 연장 (기존 디버프 있을 때만)
+    if (thr.debuffDurationBonus && augmented.debuff && augmented.debuffDuration) {
+      augmented.debuffDuration = augmented.debuffDuration + thr.debuffDurationBonus;
+    }
+
+    // ④ 흡혈 추가
+    if (thr.lifestealBonus && augmented.damageMultiplier) {
+      augmented.lifesteal = Math.min(1.0, (augmented.lifesteal ?? 0) + thr.lifestealBonus);
+    }
+
+    // ⑤ 자가회복 보너스
+    if (thr.selfHealBonus) {
+      augmented.selfHealAmount = (augmented.selfHealAmount ?? 0) + thr.selfHealBonus;
+    }
+
+    // ⑥ STB 회복 보너스
+    if (thr.stbRestoreBonus) {
+      augmented.stbRestore = (augmented.stbRestore ?? 0) + thr.stbRestoreBonus;
+    }
+
+    // ⑦ STB 소모
     if (thr.stbCostPerUse) {
       stbCostPerUse += thr.stbCostPerUse;
     }
 
-    // ④ 변이 이름 (≥3 && namePrefix 있을 때만)
+    // ⑧ 변이 이름 (≥3 && namePrefix 있을 때만)
     if (count >= 3 && def.threshold3?.namePrefix && !mutatedName) {
       mutatedName = `${def.threshold3.namePrefix}${skillAiName}`;
     }

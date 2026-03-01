@@ -38,12 +38,14 @@ export interface BattleContext {
     statusEffects: AppliedStatus[];
     isOverdriven: boolean;
     isMagicSword: boolean;
+    shield?: number;
   };
   owner: OwnerCombatStats & {
     class: OwnerClass;
     personalityStats: OwnerPersonalityStats;
     statusEffects: AppliedStatus[];
     misjudgeChance: number; // 누적 오판 확률
+    shield?: number;
   };
   enemy: {
     id: string;
@@ -228,6 +230,11 @@ export class CombatEngine {
       sword.isOverdriven = false;
     }
 
+    // 보호막 자연 감소 (매 턴 -5)
+    if (owner.shield && owner.shield > 0) {
+      owner.shield = Math.max(0, owner.shield - 5);
+    }
+
     // 상태이상 지속시간 감소
     this.tickStatusDurations(sword);
     this.tickStatusDurations(owner);
@@ -245,31 +252,50 @@ export class CombatEngine {
     enemy: BattleContext['enemy'],
     ctx: BattleContext,
     logs: TurnLogEntry[],
-    random: () => number,
+    _random: () => number,
   ): void {
     const effect = skill.effect;
 
-    // 공격 피해
+    // 공격 피해 (단일 or 다중 히트)
     if (effect.damageMultiplier) {
-      let baseDmg = Math.round(sword.atk * effect.damageMultiplier);
-      // 폭주 ATK 보너스
-      if (sword.isOverdriven) {
-        baseDmg = Math.round(baseDmg * 1.25);
+      const hitCount = effect.multiHit ?? 1;
+      let totalDmg = 0;
+
+      for (let i = 0; i < hitCount; i++) {
+        let baseDmg = Math.round(sword.atk * effect.damageMultiplier);
+        if (sword.isOverdriven) baseDmg = Math.round(baseDmg * 1.25);
+        if (ctx.compatibilityScore >= COMPAT_HIGH_THRESHOLD) baseDmg = Math.round(baseDmg * 1.10);
+        if (effect.statusDmgBonus && enemy.statusEffects.length > 0) {
+          baseDmg = Math.round(baseDmg * effect.statusDmgBonus);
+        }
+        const finalDmg = this.elementEngine.applyElementMultiplier(baseDmg, skill.element, enemy.element);
+        const reduced = effect.shieldPierce
+          ? Math.max(1, finalDmg)
+          : Math.max(1, finalDmg - Math.floor(enemy.def * 0.3));
+        enemy.hp = Math.max(0, enemy.hp - reduced);
+        totalDmg += reduced;
+        if (hitCount > 1) {
+          logs.push({ actorType: 'sword', actionType: 'skill_hit', skillId: skill.skillId, damageDealt: reduced });
+        }
       }
-      // 조화 속성 보너스
-      if (ctx.compatibilityScore >= COMPAT_HIGH_THRESHOLD) {
-        baseDmg = Math.round(baseDmg * 1.10);
-      }
-      const finalDmg = this.elementEngine.applyElementMultiplier(baseDmg, skill.element, enemy.element);
-      const reduced = Math.max(1, finalDmg - Math.floor(enemy.def * 0.3));
-      enemy.hp = Math.max(0, enemy.hp - reduced);
+
       logs.push({
         actorType: 'sword',
         actionType: 'skill',
         skillId: skill.skillId,
         mutatedName: skill.mutatedName,
-        damageDealt: reduced,
+        damageDealt: totalDmg,
+        ...(hitCount > 1 ? { text: `${hitCount}연격! 총 ${totalDmg} 피해` } : {}),
       });
+
+      // 흡혈
+      if (effect.lifesteal && totalDmg > 0) {
+        const healAmt = Math.floor(totalDmg * effect.lifesteal);
+        if (healAmt > 0) {
+          owner.hp = Math.min(owner.hpMax, owner.hp + healAmt);
+          logs.push({ actorType: 'owner', actionType: 'lifesteal', healAmount: healAmt });
+        }
+      }
     }
 
     // 광역 피해
@@ -292,9 +318,25 @@ export class CombatEngine {
       logs.push({ actorType: 'sword', actionType: 'sync_restore', healAmount: effect.syncRestore });
     }
 
-    // 보호막 (DEF 임시 상승으로 처리 - MVP)
+    // 보호막 부여 (주인에게 적용)
     if (effect.shieldAmount) {
+      owner.shield = (owner.shield ?? 0) + effect.shieldAmount;
       logs.push({ actorType: 'sword', actionType: 'shield', healAmount: effect.shieldAmount, text: `보호막 ${effect.shieldAmount} 획득` });
+    }
+
+    // STB 직접 회복
+    if (effect.stbRestore) {
+      sword.stb = Math.min(20, sword.stb + effect.stbRestore);
+      logs.push({ actorType: 'sword', actionType: 'stb_restore', stateChanges: { stb: effect.stbRestore } });
+    }
+
+    // 주인 HP 직접 회복
+    if (effect.selfHealAmount) {
+      const heal = Math.min(owner.hpMax - owner.hp, effect.selfHealAmount);
+      if (heal > 0) {
+        owner.hp += heal;
+        logs.push({ actorType: 'owner', actionType: 'self_heal', healAmount: heal });
+      }
     }
   }
 
@@ -393,9 +435,14 @@ export class CombatEngine {
     }
 
     // 폴백: 기본 공격
-    const dmg = Math.max(1, enemy.atk - Math.floor(sword.def * 0.3));
-    owner.hp = Math.max(0, owner.hp - dmg);
-    logs.push({ actorType: 'enemy', actionType: 'attack', damageDealt: dmg });
+    let fallbackDmg = Math.max(1, enemy.atk - Math.floor(sword.def * 0.3));
+    if (owner.shield && owner.shield > 0) {
+      const absorbed = Math.min(owner.shield, fallbackDmg);
+      owner.shield -= absorbed;
+      fallbackDmg -= absorbed;
+    }
+    if (fallbackDmg > 0) owner.hp = Math.max(0, owner.hp - fallbackDmg);
+    logs.push({ actorType: 'enemy', actionType: 'attack', damageDealt: fallbackDmg });
   }
 
   private checkEnemyCondition(condition: string, hpRatio: number, turnNumber: number): boolean {
@@ -414,19 +461,33 @@ export class CombatEngine {
     owner: BattleContext['owner'],
     sword: BattleContext['sword'],
     logs: TurnLogEntry[],
-    random: () => number,
+    _random: () => number,
   ): void {
     switch (pattern.action) {
       case 'attack': {
         const mult = pattern.multiplier ?? 1.0;
-        const dmg = Math.max(1, Math.round(enemy.atk * mult) - Math.floor(sword.def * 0.3));
+        let dmg = Math.max(1, Math.round(enemy.atk * mult) - Math.floor(sword.def * 0.3));
+        if (owner.shield && owner.shield > 0) {
+          const absorbed = Math.min(owner.shield, dmg);
+          owner.shield -= absorbed;
+          dmg -= absorbed;
+          if (dmg <= 0) {
+            logs.push({ actorType: 'enemy', actionType: 'attack', damageDealt: 0, text: `보호막이 ${absorbed} 피해를 흡수했다` });
+            break;
+          }
+        }
         owner.hp = Math.max(0, owner.hp - dmg);
         logs.push({ actorType: 'enemy', actionType: 'attack', damageDealt: dmg });
         break;
       }
       case 'heavy_attack': {
-        const dmg = Math.max(1, Math.round(enemy.atk * 1.8) - Math.floor(sword.def * 0.2));
-        owner.hp = Math.max(0, owner.hp - dmg);
+        let dmg = Math.max(1, Math.round(enemy.atk * 1.8) - Math.floor(sword.def * 0.2));
+        if (owner.shield && owner.shield > 0) {
+          const absorbed = Math.min(owner.shield, dmg);
+          owner.shield -= absorbed;
+          dmg -= absorbed;
+        }
+        if (dmg > 0) owner.hp = Math.max(0, owner.hp - dmg);
         logs.push({ actorType: 'enemy', actionType: 'heavy_attack', damageDealt: dmg, text: '강공격!' });
         break;
       }
@@ -515,11 +576,13 @@ export class CombatEngine {
       spd: sword.spd,
       isOverdriven: sword.isOverdriven,
       isMagicSword: sword.isMagicSword,
+      shield: sword.shield,
       statusEffects: sword.statusEffects,
     };
     const ownerStateAfter: OwnerStateSnapshot = {
       hp: owner.hp,
       hpMax: owner.hpMax,
+      shield: owner.shield,
       statusEffects: owner.statusEffects,
     };
     const enemyStateAfter: EnemyStateSnapshot = {
