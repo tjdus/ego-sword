@@ -29,6 +29,96 @@ import { ELEMENT_COLOR, ELEMENT_LABEL } from "@/lib/element";
 
 type CombatPhase = "idle" | "sword-attacking" | "enemy-attacking" | "resolving";
 
+// ── 흡수 diff 타입 ────────────────────────────────────────────────
+
+interface StatDiff {
+  label: string;
+  before: number;
+  after: number;
+  delta: number;
+}
+
+interface AbsorbDiff {
+  itemName: string;
+  stats: StatDiff[];
+  newTags: string[];
+  elementChanged: { from: string; to: string } | null;
+  newSkills: string[];
+  skillUpgrades: Array<{ from: string; to: string }>;
+  modeGained: "magicSword" | "overdriven" | null;
+  triggerFired: boolean;
+  beforeImage: string | null;
+  afterImage: string | null;
+}
+
+import type { SwordState, AbsorbResult } from "@/lib/api";
+
+function computeAbsorbDiff(
+  itemName: string,
+  prev: SwordState,
+  next: SwordState,
+  result: AbsorbResult,
+): AbsorbDiff {
+  const statFields: { key: keyof SwordState; label: string }[] = [
+    { key: "atk", label: "ATK" },
+    { key: "def", label: "DEF" },
+    { key: "spd", label: "SPD" },
+    { key: "syncMax", label: "SYNC최대" },
+    { key: "stb", label: "STB" },
+    { key: "dom", label: "DOM" },
+  ];
+
+  const stats = statFields
+    .map(({ key, label }) => ({
+      label,
+      before: (prev[key] as number) ?? 0,
+      after: (next[key] as number) ?? 0,
+      delta: ((next[key] as number) ?? 0) - ((prev[key] as number) ?? 0),
+    }))
+    .filter((s) => s.delta !== 0);
+
+  const prevTags = prev.tags ?? [];
+  const nextTags = next.tags ?? [];
+  const newTags = nextTags.slice(prevTags.length);
+
+  const elementChanged =
+    prev.element !== next.element
+      ? { from: prev.element, to: next.element }
+      : null;
+
+  const prevSkillSet = new Set(prev.activeSkillIds);
+  const newSkills = (next.activeSkillIds ?? []).filter(
+    (id) => !prevSkillSet.has(id),
+  );
+
+  const modeGained =
+    !prev.isMagicSword && next.isMagicSword
+      ? "magicSword"
+      : !prev.isOverdriven && next.isOverdriven
+        ? "overdriven"
+        : null;
+
+  return {
+    itemName,
+    stats,
+    newTags,
+    elementChanged,
+    newSkills,
+    skillUpgrades: result.skillUpgrades ?? [],
+    modeGained,
+    triggerFired: (result.triggerEvents?.length ?? 0) > 0,
+    beforeImage: prev.swordImageBase64 ?? null,
+    afterImage: next.swordImageBase64 ?? null,
+  };
+}
+
+// TAG 한국어 라벨
+const TAG_LABEL: Record<string, string> = {
+  fire: "🔥 화염", ice: "❄️ 빙결", thunder: "⚡ 번개", dark: "🌑 어둠",
+  light: "✨ 빛", wind: "💨 바람", poison: "☠️ 독", soul: "👻 영혼",
+  combat: "⚔️ 전투", curse: "🩸 저주",
+};
+
 interface StatusEffect {
   type: string;
   stacks?: number;
@@ -205,6 +295,7 @@ export default function BattlePage() {
   const [rewardItems, setRewardItems] = useState<DroppedItem[]>([]);
   const [pendingSkillSwapId, setPendingSkillSwapId] = useState<string | null>(null);
   const [absorbingId, setAbsorbingId] = useState<string | null>(null);
+  const [itemDiffs, setItemDiffs] = useState<Record<string, AbsorbDiff>>({});
 
   const turnCounterRef = useRef(1);
   const logEndRef = useRef<HTMLDivElement>(null);
@@ -711,6 +802,20 @@ export default function BattlePage() {
               에고소드
             </p>
 
+            {/* 픽셀아트 검 이미지 */}
+            {swordState.swordImageBase64 && (
+              <div className="flex justify-center mb-2">
+                <img
+                  src={swordState.swordImageBase64}
+                  alt="sword"
+                  width={48}
+                  height={48}
+                  style={{ imageRendering: 'pixelated' }}
+                  className="rounded opacity-90"
+                />
+              </div>
+            )}
+
             {/* SYNC 바 */}
             <div className="flex items-center gap-1.5 mb-1.5">
               <span className="text-[9px] text-white/25 shrink-0">SYNC</span>
@@ -1020,12 +1125,171 @@ export default function BattlePage() {
               </p>
             ) : (
               rewardItems.map((item) => {
+                const diff = itemDiffs[item.id];
                 const rarityColor =
                   item.rarity === "epic"
                     ? "text-purple-300 border-purple-500/40"
                     : item.rarity === "rare"
                       ? "text-blue-300 border-blue-500/40"
                       : "text-slate-300 border-white/20";
+
+                // 흡수 완료 → diff 카드 표시
+                if (diff) {
+                  return (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, scale: 0.97 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="rounded-xl border border-emerald-500/30 bg-emerald-900/10 p-3"
+                    >
+                      {/* 헤더 */}
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="text-emerald-400 text-sm">✓</span>
+                        <span className="text-xs font-semibold text-emerald-300">
+                          {diff.itemName} 흡수됨
+                        </span>
+                      </div>
+
+                      {/* 이미지 before → after */}
+                      {(diff.beforeImage || diff.afterImage) && (
+                        <div className="flex items-center gap-3 mb-2">
+                          {diff.beforeImage ? (
+                            <img
+                              src={diff.beforeImage}
+                              alt="before"
+                              width={56}
+                              height={56}
+                              className="rounded opacity-40 grayscale"
+                              style={{ imageRendering: "pixelated" }}
+                            />
+                          ) : (
+                            <div className="w-14 h-14 rounded bg-white/5 border border-white/10" />
+                          )}
+                          <span className="text-white/30 text-lg">→</span>
+                          {diff.afterImage ? (
+                            <motion.img
+                              src={diff.afterImage}
+                              alt="after"
+                              width={56}
+                              height={56}
+                              initial={{ scale: 0.7, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                              className="rounded"
+                              style={{ imageRendering: "pixelated" }}
+                            />
+                          ) : (
+                            <div className="w-14 h-14 rounded bg-white/5 border border-white/10" />
+                          )}
+                        </div>
+                      )}
+
+                      {/* 스탯 변화 */}
+                      {diff.stats.length > 0 && (
+                        <div className="space-y-0.5 mb-1.5">
+                          {diff.stats.map((s, i) => (
+                            <motion.div
+                              key={s.label}
+                              initial={{ opacity: 0, x: -6 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: i * 0.06 }}
+                              className="flex items-center gap-1.5 text-[11px]"
+                            >
+                              <span className="text-white/40 w-12">{s.label}</span>
+                              <span className="text-white/50">{s.before}</span>
+                              <span className="text-white/30 text-[9px]">→</span>
+                              <span className="text-white/80 font-medium">{s.after}</span>
+                              <span className={`ml-auto font-bold ${s.delta > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                                {s.delta > 0 ? `+${s.delta}` : s.delta} {s.delta > 0 ? "▲" : "▼"}
+                              </span>
+                            </motion.div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* 태그 추가 */}
+                      {diff.newTags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-1.5">
+                          {diff.newTags.map((t, i) => (
+                            <motion.span
+                              key={i}
+                              initial={{ opacity: 0, scale: 0.8 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: 0.1 + i * 0.05 }}
+                              className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-white/60"
+                            >
+                              {TAG_LABEL[t] ?? t} 추가
+                            </motion.span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* 원소 변화 */}
+                      {diff.elementChanged && (
+                        <div className="text-[10px] text-white/50 mb-1">
+                          <span style={{ color: ELEMENT_COLOR[diff.elementChanged.from] ?? "#94A3B8" }}>
+                            {diff.elementChanged.from}
+                          </span>
+                          {" → "}
+                          <span style={{ color: ELEMENT_COLOR[diff.elementChanged.to] ?? "#94A3B8" }}>
+                            {diff.elementChanged.to}
+                          </span>
+                          {" "}원소로 변화
+                        </div>
+                      )}
+
+                      {/* 새 스킬 */}
+                      {diff.newSkills.length > 0 && (
+                        <div className="text-[10px] text-cyan-400/80 mb-1">
+                          📖 새 스킬 획득
+                        </div>
+                      )}
+
+                      {/* 스킬 업그레이드 */}
+                      {diff.skillUpgrades.length > 0 && (
+                        <div className="text-[10px] text-yellow-400/80 mb-1">
+                          ⚡ 스킬 강화!
+                        </div>
+                      )}
+
+                      {/* 트리거 발동 */}
+                      {diff.triggerFired && (
+                        <div className="text-[10px] text-amber-400/80 mb-1">
+                          ✦ 특성 트리거 발동!
+                        </div>
+                      )}
+
+                      {/* 모드 변화 배너 */}
+                      {diff.modeGained === "magicSword" && (
+                        <motion.div
+                          initial={{ scale: 0.85, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ type: "spring", stiffness: 260, damping: 16 }}
+                          className="mt-1.5 rounded-lg border border-purple-500/50 bg-purple-900/40 px-2.5 py-1.5 text-center"
+                        >
+                          <span className="text-xs font-bold text-purple-300">
+                            ⚔ 마검 각성!
+                          </span>
+                        </motion.div>
+                      )}
+                      {diff.modeGained === "overdriven" && (
+                        <motion.div
+                          initial={{ scale: 0.85, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ type: "spring", stiffness: 260, damping: 16 }}
+                          className="mt-1.5 rounded-lg border border-red-500/50 bg-red-900/40 px-2.5 py-1.5 text-center"
+                        >
+                          <span className="text-xs font-bold text-red-300">
+                            💢 폭주 돌입!
+                          </span>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  );
+                }
+
+                // 기본 아이템 카드 (흡수 전)
                 return (
                   <div
                     key={item.id}
@@ -1055,17 +1319,35 @@ export default function BattlePage() {
                         onClick={async () => {
                           if (!runId) return;
                           setAbsorbingId(item.id);
+                          const prevState = swordState;
                           try {
                             const res = await api.run.absorbBattleDrop(runId, item.id);
                             setSwordState(res.swordState);
                             if (res.pendingSkillSwap) {
                               setPendingSkillSwapId(res.pendingSkillSwap);
                             }
+                            if (prevState) {
+                              const diff = computeAbsorbDiff(
+                                item.aiName ?? item.id,
+                                prevState,
+                                res.swordState,
+                                res,
+                              );
+                              setItemDiffs((prev) => ({ ...prev, [item.id]: diff }));
+                            }
+                            // 2.5초 후 자동 제거
+                            setTimeout(() => {
+                              setRewardItems((prev) => prev.filter((i) => i.id !== item.id));
+                              setItemDiffs((prev) => {
+                                const n = { ...prev };
+                                delete n[item.id];
+                                return n;
+                              });
+                            }, 2500);
                           } catch {
-                            // 흡수 실패는 무시하고 계속
+                            setRewardItems((prev) => prev.filter((i) => i.id !== item.id));
                           } finally {
                             setAbsorbingId(null);
-                            setRewardItems((prev) => prev.filter((i) => i.id !== item.id));
                           }
                         }}
                       >
@@ -1090,7 +1372,7 @@ export default function BattlePage() {
           <DialogFooter>
             <Button
               className="w-full bg-white text-black hover:bg-white/90"
-              disabled={rewardItems.length > 0}
+              disabled={rewardItems.some((i) => !itemDiffs[i.id])}
               onClick={() => {
                 setShowRewardModal(false);
                 if (pendingSkillSwapId) {
@@ -1100,7 +1382,9 @@ export default function BattlePage() {
                 }
               }}
             >
-              {rewardItems.length > 0 ? `남은 아이템 ${rewardItems.length}개` : "계속"}
+              {rewardItems.some((i) => !itemDiffs[i.id])
+                ? `남은 아이템 ${rewardItems.filter((i) => !itemDiffs[i.id]).length}개`
+                : "계속"}
             </Button>
           </DialogFooter>
         </DialogContent>

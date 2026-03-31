@@ -103,10 +103,25 @@ export default function OwnerSelectPage() {
                   </Badge>
                 </div>
 
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-2">
                   <Badge variant="secondary" className="text-xs">{CLASS_LABEL[c.class]}</Badge>
                   <span className="text-xs text-muted-foreground">{c.hint}</span>
                 </div>
+
+                {(c.aiText.backstory || c.aiText.swordOpinion) && (
+                  <div className="mb-2 space-y-1">
+                    {c.aiText.backstory && (
+                      <p className="text-xs text-gray-400 leading-relaxed">
+                        <span className="text-gray-500">과거 </span>{c.aiText.backstory}
+                      </p>
+                    )}
+                    {c.aiText.swordOpinion && (
+                      <p className="text-xs text-indigo-400/80 italic">
+                        "{c.aiText.swordOpinion}"
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">

@@ -6,6 +6,7 @@ import type {
   EnemyState,
   RoomData,
   TurnLog,
+  AiEventData,
 } from "@/lib/api";
 
 interface RunStore {
@@ -19,6 +20,7 @@ interface RunStore {
   enemyState: EnemyState | null;
   currentRoom: RoomData | null;
   floorMap: RoomData[];
+  currentEventData: AiEventData | null;
 
   // 전투 로그 (최근 20턴)
   battleLog: TurnLog[];
@@ -36,6 +38,7 @@ interface RunStore {
   setCurrentRoom: (room: RoomData) => void;
   setCurrentFloor: (floor: number) => void;
   setFloorMap: (rooms: RoomData[]) => void;
+  setCurrentEventData: (data: AiEventData | null) => void;
   addBattleLog: (logs: TurnLog[]) => void;
   clearBattleLog: () => void;
   resetRun: () => void;
@@ -51,6 +54,7 @@ export const useRunStore = create<RunStore>()(
       enemyState: null,
       currentRoom: null,
       floorMap: [],
+      currentEventData: null,
       battleLog: [],
       userId: null,
       token: null,
@@ -68,6 +72,7 @@ export const useRunStore = create<RunStore>()(
       setEnemyState: (enemyState) => set({ enemyState }),
       setCurrentRoom: (currentRoom) => set({ currentRoom }),
       setFloorMap: (floorMap) => set({ floorMap }),
+      setCurrentEventData: (currentEventData) => set({ currentEventData }),
       addBattleLog: (logs) =>
         set((s) => ({ battleLog: [...s.battleLog, ...logs].slice(-20) })),
       clearBattleLog: () => set({ battleLog: [] }),
@@ -80,6 +85,7 @@ export const useRunStore = create<RunStore>()(
           enemyState: null,
           currentRoom: null,
           floorMap: [],
+          currentEventData: null,
           battleLog: [],
         }),
     }),

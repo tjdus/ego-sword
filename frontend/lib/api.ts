@@ -165,6 +165,9 @@ export interface OwnerCandidate {
     oneLiner: string;
     speechStyle?: { tone: string; quirk: string };
     combatBarks?: { start: string; lowHp: string; victory: string };
+    backstory?: string | null;
+    swordOpinion?: string | null;
+    uniqueQuirk?: string | null;
   };
   hint?: string;
 }
@@ -178,12 +181,25 @@ export interface RoomData {
   enemyId?: string;
 }
 
+export interface AiEventChoice {
+  label: string;
+  hint: string;
+  outcomeText: string;
+  mechanic: string;
+}
+
+export interface AiEventData {
+  title: string;
+  description: string;
+  choices: AiEventChoice[];
+}
+
 export interface RoomEnterResult {
   roomType: string;
   enemyState?: EnemyState;
   swordState?: SwordState;
   ownerState?: OwnerState;
-  eventData?: { id: string; choices: number };
+  eventData?: AiEventData;
 }
 
 /** 백엔드 AppliedStatus와 동일한 구조 */
@@ -224,6 +240,7 @@ export interface SwordState {
   absorbedItemIds?: string[];
   tags?: string[];
   statusEffects?: AppliedStatus[];
+  swordImageBase64?: string;
 }
 
 export interface OwnerState {
@@ -358,4 +375,6 @@ export interface ShopItem {
   shopPrice: number;
   aiName: string | null;
   aiDesc: string | null;
+  aiLore?: string | null;
+  isUnique?: boolean;
 }

@@ -52,15 +52,16 @@ model Run {
 }
 
 model RunRoom {
-  id         String      @id @default(cuid())
-  runId      String
-  floor      Int
-  position   Int
-  roomType   String // battle | elite | event | shop | rest | boss
-  status     String      @default("locked") // locked | available | completed
-  enemyId    String?
-  enemyState EnemyState?
-  run        Run         @relation(fields: [runId], references: [id])
+  id          String      @id @default(cuid())
+  runId       String
+  floor       Int
+  position    Int
+  roomType    String // battle | elite | event | shop | rest | boss
+  status      String      @default("locked") // locked | available | completed
+  enemyId     String?
+  aiEventJson Json? // AI 생성 이벤트 데이터 (event 룸에만 저장)
+  enemyState  EnemyState?
+  run         Run         @relation(fields: [runId], references: [id])
 
   @@index([runId, floor])
 }
@@ -101,10 +102,11 @@ model SwordState {
   tags             String[]
   firedTriggerIds  String[]
   gold             Int      @default(30)
-  isOverdriven     Boolean  @default(false)
-  isMagicSword     Boolean  @default(false)
-  updatedAt       DateTime @updatedAt
-  run             Run      @relation(fields: [runId], references: [id])
+  isOverdriven      Boolean  @default(false)
+  isMagicSword      Boolean  @default(false)
+  swordImageBase64  String?  // AI 생성 픽셀아트 검 이미지 (base64 data URL)
+  updatedAt         DateTime @updatedAt
+  run               Run      @relation(fields: [runId], references: [id])
 }
 
 model OwnerState {
@@ -128,6 +130,7 @@ model OwnerState {
   name               String
   oneLiner           String
   speechStyleJson    Json
+  ownerExtendedJson  Json? // AI 생성 확장 정보: { backstory, swordOpinion, uniqueQuirk }
   compatibilityScore Int      @default(50)
   compatBreakdown    Json
   updatedAt          DateTime @updatedAt
@@ -224,6 +227,24 @@ model EnemyTemplate {
   floorMin      Int          @default(1)
   floorMax      Int          @default(3)
   enemyStates   EnemyState[]
+}
+
+// ─── AI 생성 런 고유 아이템 ────────────────────────────────────────────────────
+
+model GeneratedItemTemplate {
+  id        String   @id // "GEN_{runId}_{floor}"
+  runId     String
+  floor     Int
+  tags      String[]
+  effectJson Json
+  rarity    String // rare|epic
+  shopPrice Int
+  aiName    String
+  aiDesc    String
+  aiLore    String?
+  createdAt DateTime @default(now())
+
+  @@index([runId, floor])
 }
 
 // ─── AI 텍스트 캐시 ───────────────────────────────────────────────────────────

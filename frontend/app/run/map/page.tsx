@@ -68,6 +68,7 @@ export default function DungeonMapPage() {
     setOwnerState,
     setFloorMap,
     setCurrentFloor,
+    setCurrentEventData,
     ownerState,
     swordState,
     currentFloor,
@@ -90,6 +91,7 @@ export default function DungeonMapPage() {
       if (result.enemyState) setEnemyState(result.enemyState);
       if (result.swordState) setSwordState(result.swordState);
       if (result.ownerState) setOwnerState(result.ownerState);
+      if (result.eventData) setCurrentEventData(result.eventData);
 
       if (
         result.roomType === "battle" ||
