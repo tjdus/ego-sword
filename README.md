@@ -130,9 +130,7 @@ AI는 **텍스트 연출만 담당**한다. 수치·보상·전투 결과는 모
 <!-- 스크린샷: 이벤트 화면 -->
 <table>
   <tr>
-    <td align="center">
-      <img width="360" alt="이벤트 화면 1" src="https://github.com/user-attachments/assets/e69217d2-c28e-4af3-921c-5161f747dd84" />
-
+    <td align="center"><img width="360" alt="이벤트 화면 1" src="https://github.com/user-attachments/assets/8ec7a281-bc23-4a02-b313-41f8db99b28b" />
     </td>
     <td align="center"><img width="360" alt="이벤트 화면 2" src="https://github.com/user-attachments/assets/9c4a9c6c-6432-4e54-8cb9-160e6fe2f57d" /></td>
   </tr>
@@ -280,8 +278,9 @@ AI는 **텍스트 연출만 담당**한다. 수치·보상·전투 결과는 모
 <!-- 스크린샷: 전투 화면 -->
 <table>
   <tr>
-    <td align="center"><img width="380" alt="전투 화면 1" src="https://github.com/user-attachments/assets/94676833-dc67-480d-8905-195030a462db" /></td>
     <td align="center"><img width="360" alt="전투 화면 2" src="https://github.com/user-attachments/assets/14f78eb3-890b-4857-96c1-9d848fcc8f63" /></td>
+    <td align="center"><img width="360" alt="전투 화면 1" src="https://github.com/user-attachments/assets/497911a2-ce5d-4720-9e01-290b0c59892b" />
+</td>
   </tr>
 </table>
 
