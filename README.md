@@ -88,7 +88,7 @@ AI는 **텍스트 연출만 담당**한다. 수치·보상·전투 결과는 모
 ```
 
 <!-- 스크린샷: 주인 정보 화면 -->
-<img width="634" height="517" alt="image" src="https://github.com/user-attachments/assets/d161da2f-cf2c-450d-bf35-343f0806491f" />
+<img width="360" alt="주인 정보 화면" src="https://github.com/user-attachments/assets/c93e5c30-6b13-4278-bc29-d5d244148177" />
 
 
 ---
