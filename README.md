@@ -7,7 +7,7 @@
 ---
 
 <!-- 스크린샷: 메인 화면 -->
-<img width="700" alt="메인 화면" src="https://github.com/user-attachments/assets/7ab28f35-36a0-47e6-bb6a-3a7702c22908" />
+<img width="630" alt="메인 화면" src="https://github.com/user-attachments/assets/806299c0-a9df-471f-b90e-93ce511d8c8e" />
 
 
 ---
@@ -88,7 +88,7 @@ AI는 **텍스트 연출만 담당**한다. 수치·보상·전투 결과는 모
 ```
 
 <!-- 스크린샷: 주인 정보 화면 -->
-<img width="280" alt="주인 정보 화면" src="https://github.com/user-attachments/assets/fe0a867a-c5fc-41b0-a04f-7950f09c14f6" />
+<img width="634" height="517" alt="image" src="https://github.com/user-attachments/assets/d161da2f-cf2c-450d-bf35-343f0806491f" />
 
 
 ---
@@ -130,7 +130,10 @@ AI는 **텍스트 연출만 담당**한다. 수치·보상·전투 결과는 모
 <!-- 스크린샷: 이벤트 화면 -->
 <table>
   <tr>
-    <td align="center"><img width="360" alt="이벤트 화면 1" src="https://github.com/user-attachments/assets/4bff0e21-4e6d-44e8-8f63-8d6311d06547" /></td>
+    <td align="center">
+      <img width="360" alt="이벤트 화면 1" src="https://github.com/user-attachments/assets/e69217d2-c28e-4af3-921c-5161f747dd84" />
+
+    </td>
     <td align="center"><img width="360" alt="이벤트 화면 2" src="https://github.com/user-attachments/assets/9c4a9c6c-6432-4e54-8cb9-160e6fe2f57d" /></td>
   </tr>
 </table>
@@ -317,5 +320,5 @@ npm run dev
 
 ---
 
-<!-- 스크린샷: HoF (명예의 전당) 화면 -->
-![명예의 전당]()
+<img width="360" alt="도감" src="https://github.com/user-attachments/assets/1b6430eb-5a7a-4eee-9b85-dba0451142e8" />
+
