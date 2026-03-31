@@ -7,7 +7,7 @@
 ---
 
 <!-- 스크린샷: 메인 화면 -->
-<img width="2038" height="1472" alt="image" src="https://github.com/user-attachments/assets/7ab28f35-36a0-47e6-bb6a-3a7702c22908" />
+<img width="700" alt="메인 화면" src="https://github.com/user-attachments/assets/7ab28f35-36a0-47e6-bb6a-3a7702c22908" />
 
 
 ---
@@ -39,7 +39,7 @@
 ---
 
 <!-- 스크린샷: 지도 화면 -->
-<img width="1360" height="1472" alt="image" src="https://github.com/user-attachments/assets/6b8de1fa-a3c9-4d33-b3f1-10b5302371c2" />
+<img width="380" alt="지도 화면" src="https://github.com/user-attachments/assets/6b8de1fa-a3c9-4d33-b3f1-10b5302371c2" />
 
 ---
 
@@ -88,7 +88,7 @@ AI는 **텍스트 연출만 담당**한다. 수치·보상·전투 결과는 모
 ```
 
 <!-- 스크린샷: 주인 정보 화면 -->
-<img width="1360" height="2600" alt="image" src="https://github.com/user-attachments/assets/fe0a867a-c5fc-41b0-a04f-7950f09c14f6" />
+<img width="280" alt="주인 정보 화면" src="https://github.com/user-attachments/assets/fe0a867a-c5fc-41b0-a04f-7950f09c14f6" />
 
 
 ---
@@ -128,9 +128,12 @@ AI는 **텍스트 연출만 담당**한다. 수치·보상·전투 결과는 모
 `mechanic` 코드는 서버가 허용 목록(`atk_up`, `stb_up`, `dom_up`, `gold_gain`, `hp_restore`, `tag_fire` 등 15종)에서 검증 후 실제 수치 처리한다. AI가 임의의 효과 코드를 만들어도 무시된다.
 
 <!-- 스크린샷: 이벤트 화면 -->
-<img width="1360" height="1472" alt="image" src="https://github.com/user-attachments/assets/4bff0e21-4e6d-44e8-8f63-8d6311d06547" />
-
-<img width="1360" height="1472" alt="image" src="https://github.com/user-attachments/assets/9c4a9c6c-6432-4e54-8cb9-160e6fe2f57d" />
+<table>
+  <tr>
+    <td align="center"><img width="360" alt="이벤트 화면 1" src="https://github.com/user-attachments/assets/4bff0e21-4e6d-44e8-8f63-8d6311d06547" /></td>
+    <td align="center"><img width="360" alt="이벤트 화면 2" src="https://github.com/user-attachments/assets/9c4a9c6c-6432-4e54-8cb9-160e6fe2f57d" /></td>
+  </tr>
+</table>
 
 
 ---
@@ -165,7 +168,7 @@ AI는 **텍스트 연출만 담당**한다. 수치·보상·전투 결과는 모
 `effectCode`는 서버가 파싱해 실제 `ItemEffect`로 변환한다. 허용된 코드 형식(`atk+N`, `def+N`, `dom+N` 등)만 적용되며 그 외는 기본값 처리된다.
 
 <!-- 스크린샷: 상점 화면 -->
-<img width="1360" height="1840" alt="image" src="https://github.com/user-attachments/assets/d3ca4802-562a-4111-8c32-c7c7bc0f2a37" />
+<img width="320" alt="상점 화면" src="https://github.com/user-attachments/assets/d3ca4802-562a-4111-8c32-c7c7bc0f2a37" />
 
 
 ---
@@ -272,9 +275,12 @@ AI는 **텍스트 연출만 담당**한다. 수치·보상·전투 결과는 모
 - 스킬 30개 / 아이템 27개 / 태그 변이 10종 / 트리거 6종
 
 <!-- 스크린샷: 전투 화면 -->
-<img width="2038" height="1472" alt="image" src="https://github.com/user-attachments/assets/94676833-dc67-480d-8905-195030a462db" />
-
-<img width="1360" height="1472" alt="image" src="https://github.com/user-attachments/assets/14f78eb3-890b-4857-96c1-9d848fcc8f63" />
+<table>
+  <tr>
+    <td align="center"><img width="380" alt="전투 화면 1" src="https://github.com/user-attachments/assets/94676833-dc67-480d-8905-195030a462db" /></td>
+    <td align="center"><img width="360" alt="전투 화면 2" src="https://github.com/user-attachments/assets/14f78eb3-890b-4857-96c1-9d848fcc8f63" /></td>
+  </tr>
+</table>
 
 ---
 
